@@ -84,7 +84,7 @@ function Shell() {
       <nav className="site-nav no-print">
         <div className="nav-inner">
           <NavLink to="/" className="nav-logo">
-            Tailer <span>Nicole</span> Ops
+            <span>S27</span> Ops
           </NavLink>
           <div className="nav-links">
             {LINKS.map((l) => (

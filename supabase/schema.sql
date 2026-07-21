@@ -1,4 +1,4 @@
--- Tailer Nicole Bakery Ops schema
+-- S27 Bakery Ops schema
 -- Run this in the Supabase SQL Editor (or `supabase db push`) on a fresh project.
 
 create table if not exists raw_ingredients (

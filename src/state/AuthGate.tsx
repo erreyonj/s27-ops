@@ -41,7 +41,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     return (
       <div className="page centered">
         <form className="card login-card" onSubmit={signIn}>
-          <p className="eyebrow">Tailer Nicole</p>
+          <p className="eyebrow">S27</p>
           <h1>Bakery Ops</h1>
           <p className="muted">Staff sign-in. Accounts are created by the owner — there is no self-signup.</p>
           <label>

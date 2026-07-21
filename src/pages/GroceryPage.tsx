@@ -45,7 +45,7 @@ export function GroceryPage() {
           g.lines.map((l) => `  - ${amountText(l)} ${l.ingredient.name}`).join("\n")
       )
       .join("\n\n");
-    const payload = `Tailer Nicole grocery list\n\n${text}`;
+    const payload = `S27 grocery list\n\n${text}`;
     if (navigator.share) {
       try {
         await navigator.share({ title: "Grocery list", text: payload });

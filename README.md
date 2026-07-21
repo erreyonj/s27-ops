@@ -1,6 +1,6 @@
-# Tailer Nicole — Bakery Ops
+# S27 — Bakery Ops
 
-Menu, recipe and costing app for Tailer Nicole Wine and Cupcakes.
+Menu, recipe and costing app (built for Tailer Nicole Wine and Cupcakes).
 
 - **Menu Builder (Section A):** search the recipe DB, review a menu item's components, submit it to this week's menu.
 - **Current Menu:** the week's lineup with quantities and component batch counts.
@@ -30,7 +30,7 @@ Without Supabase keys, the app runs in **demo mode** (seeded, in-memory, nothing
 
 ## Deploy (Netlify)
 
-1. Netlify -> **Add new site -> Import an existing project** -> GitHub -> `tailer-nicole-app`.
+1. Netlify -> **Add new site -> Import an existing project** -> GitHub -> `s27-ops`.
 2. Production branch: `dev`. Build command `npm run build`, publish directory `dist`
    (both already set by `netlify.toml`, which also includes the SPA redirect `/* -> /index.html 200`).
 3. Site settings -> **Environment variables** — copy the values from your local `.env` (not from git):
