@@ -43,7 +43,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
         <form className="card login-card" onSubmit={signIn}>
           <p className="eyebrow">Tailer Nicole</p>
           <h1>Bakery Ops</h1>
-          <p className="muted">Sign in with the shared bakery account.</p>
+          <p className="muted">Staff sign-in. Accounts are created by the owner — there is no self-signup.</p>
           <label>
             Email
             <input
@@ -68,6 +68,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
           <button className="btn" disabled={busy}>
             {busy ? "Signing in…" : "Sign in"}
           </button>
+          <p className="muted" style={{ fontSize: "0.85rem", marginTop: 12 }}>
+            Locked out? Ask the owner to reset your password.
+          </p>
         </form>
       </div>
     );

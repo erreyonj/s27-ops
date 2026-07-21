@@ -30,9 +30,38 @@ Without Supabase keys, the app runs in **demo mode** (seeded, in-memory, nothing
 
 ## Deploy (Netlify)
 
-Build command `npm run build`, publish directory `dist`. Set `VITE_SUPABASE_URL` and
-`VITE_SUPABASE_PUBLISHABLE_KEY` as environment variables in Netlify. Add a SPA redirect
-(`/* -> /index.html 200`) — already included in `netlify.toml`.
+1. Netlify -> **Add new site -> Import an existing project** -> GitHub -> `tailer-nicole-app`.
+2. Production branch: `dev`. Build command `npm run build`, publish directory `dist`
+   (both already set by `netlify.toml`, which also includes the SPA redirect `/* -> /index.html 200`).
+3. Site settings -> **Environment variables** — copy the values from your local `.env` (not from git):
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_PUBLISHABLE_KEY`
+
+   Never add `SUPABASE_SERVICE_ROLE_KEY` to Netlify — the browser app must only ever
+   see the publishable key.
+4. Deploy, open the site URL, and sign in.
+
+## Harden auth (Supabase dashboard)
+
+Access model: two named users (owner + baker), no public registration. RLS already
+gives any authenticated user full access and blocks anonymous ones, so this is all
+dashboard config — no schema changes.
+
+1. **Authentication -> Sign In / Providers -> Email**: keep Email enabled; turn
+   **Allow new users to sign up** OFF. Turn **Confirm email** OFF (or confirm both
+   users manually) so no one gets stuck waiting on a verification email.
+2. **Authentication -> Users -> Add user**: one account for the owner, one for the
+   baker, each with their own password (auto-confirm when creating).
+3. **Authentication -> URL Configuration**: set **Site URL** to the Netlify URL
+   (e.g. `https://your-site.netlify.app`) and add it to Redirect URLs.
+4. Locked out? The owner resets the password from **Authentication -> Users**
+   (there is no self-serve reset flow in the app).
+
+## Smoke test (phone)
+
+Sign in -> Menu Builder: add a primary cupcake -> Current Menu: bump quantity ->
+Grocery: check rounding and store grouping -> Print. With a second signed-in device,
+a quantity change should appear on the other device within a second or two (Realtime).
 
 ## Notes
 
