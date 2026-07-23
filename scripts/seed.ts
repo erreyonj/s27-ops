@@ -71,6 +71,7 @@ async function run() {
         detail: l.detail,
         grams: l.grams,
         count: l.count,
+        tsp: l.tsp ?? null,
         sort: i,
       }))
     );

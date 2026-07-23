@@ -46,7 +46,7 @@ export function groceryLines(data: AppData): GroceryLine[] {
     for (const line of comp.lines) {
       const ing = ingById.get(line.ingredientId);
       if (!ing) continue;
-      const per = ing.baseUnit === "count" ? line.count ?? 0 : line.grams ?? 0;
+      const per = lineQty(line, ing.baseUnit);
       if (per <= 0) continue;
       totals.set(line.ingredientId, (totals.get(line.ingredientId) ?? 0) + per * n);
     }
@@ -60,7 +60,7 @@ export function groceryLines(data: AppData): GroceryLine[] {
     if (ingredient.roundTo && ingredient.roundTo > 0) {
       rounded = Math.ceil(needed / ingredient.roundTo) * ingredient.roundTo;
       wasRounded = rounded > needed;
-    } else if (ingredient.baseUnit === "count") {
+    } else if (ingredient.baseUnit === "count" || ingredient.baseUnit === "tsp") {
       rounded = Math.ceil(needed);
       wasRounded = rounded > needed;
     }
@@ -90,7 +90,17 @@ export function groupByStore(lines: GroceryLine[]): Array<{ store: string; lines
 
 /* ---------------- Pricing (Section C) ---------------- */
 
-/** $ per base unit (per gram or per count), or null when unpriced. */
+/** Qty of a component line in the ingredient's base unit. */
+export function lineQty(
+  line: { grams: number | null; count: number | null; tsp: number | null },
+  baseUnit: RawIngredient["baseUnit"]
+): number {
+  if (baseUnit === "count") return line.count ?? 0;
+  if (baseUnit === "tsp") return line.tsp ?? 0;
+  return line.grams ?? 0;
+}
+
+/** $ per base unit (per gram, count, or tsp), or null when unpriced. */
 export function unitCost(ing: RawIngredient): number | null {
   if (ing.packPrice == null || ing.packQty == null || ing.packQty <= 0) return null;
   return ing.packPrice / ing.packQty;
@@ -112,7 +122,7 @@ export function componentCost(
   for (const line of comp.lines) {
     const ing = ingById.get(line.ingredientId);
     if (!ing) continue;
-    const qty = ing.baseUnit === "count" ? line.count ?? 0 : line.grams ?? 0;
+    const qty = lineQty(line, ing.baseUnit);
     if (qty <= 0) continue;
     const cost = unitCost(ing);
     if (cost == null) {
