@@ -20,6 +20,7 @@ Without Supabase keys, the app runs in **demo mode** (seeded, in-memory, nothing
 2. Create a free project at [supabase.com](https://supabase.com).
 3. In the Supabase **SQL Editor**, paste and run `supabase/schema.sql`.
    - If the project already existed before tsp support, also run `supabase/migration_tsp.sql`.
+   - If it existed before the pricing calculator redesign, also run `supabase/migration_pricing.sql`.
 4. In **Authentication -> Users**, add the single shared bakery user (email + password).
 5. Copy `.env.example` to `.env` and fill (Settings -> API):
    - `VITE_SUPABASE_URL`
@@ -77,3 +78,4 @@ a quantity change should appear on the other device within a second or two (Real
 
 - Supabase free tier pauses after ~7 days of inactivity — resume with one click in the dashboard.
 - Re-import the Excel library with `npm run import:legacy` after Materials/recipe edits; see `scripts/import-report.md` for unmatched names and cost spot-checks.
+- After pulling pricing calculator changes, run `supabase/migration_pricing.sql` in the SQL Editor (adds `bakery_settings` and menu-item yield/labor/margin/discount columns).

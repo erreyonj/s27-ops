@@ -51,7 +51,8 @@ function SetupPrompt() {
       {err && (
         <p className="error-text" style={{ marginTop: 10 }}>
           {err} — make sure you ran <code>supabase/schema.sql</code> (and{" "}
-          <code>supabase/migration_tsp.sql</code> on existing projects) in the SQL
+          <code>supabase/migration_tsp.sql</code> /{" "}
+          <code>supabase/migration_pricing.sql</code> on existing projects) in the SQL
           editor first.
         </p>
       )}

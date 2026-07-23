@@ -2,14 +2,20 @@
    can be previewed instantly. Data lives in memory (plus sessionStorage so a
    refresh doesn't wipe the demo menu). Not a second database - retired the
    moment .env is filled in. */
-import { seedComponents, seedIngredients, seedMenuItems } from "../data/seed";
-import type {
-  AppData,
-  BaseUnit,
-  ItemComponent,
-  MenuItem,
-  MenuEntry,
-  RawIngredient,
+import {
+  seedComponents,
+  seedIngredients,
+  seedMenuItems,
+} from "../data/seed";
+import {
+  DEFAULT_BAKERY_SETTINGS,
+  type AppData,
+  type BakerySettings,
+  type BaseUnit,
+  type ItemComponent,
+  type MenuItem,
+  type MenuEntry,
+  type RawIngredient,
 } from "../domain/types";
 import type { Repository } from "./Repository";
 
@@ -20,20 +26,42 @@ interface DemoState {
   components: ItemComponent[];
   menuItems: MenuItem[];
   entries: MenuEntry[];
+  settings: BakerySettings;
+}
+
+function normalizeMenuItem(m: MenuItem): MenuItem {
+  return {
+    ...m,
+    yieldAmount: m.yieldAmount ?? 1,
+    yieldUnit: m.yieldUnit ?? "batch",
+    laborHours: m.laborHours ?? null,
+    marginPct: m.marginPct ?? null,
+    discountPct: m.discountPct ?? null,
+  };
 }
 
 function loadState(): DemoState {
   try {
     const raw = sessionStorage.getItem(SS_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<DemoState>;
+      return {
+        ingredients: parsed.ingredients ?? structuredClone(seedIngredients),
+        components: parsed.components ?? structuredClone(seedComponents),
+        menuItems: (parsed.menuItems ?? structuredClone(seedMenuItems)).map(normalizeMenuItem),
+        entries: parsed.entries ?? [],
+        settings: { ...DEFAULT_BAKERY_SETTINGS, ...(parsed.settings ?? {}) },
+      };
+    }
   } catch {
     /* fall through to fresh seed */
   }
   return {
     ingredients: structuredClone(seedIngredients),
     components: structuredClone(seedComponents),
-    menuItems: structuredClone(seedMenuItems),
+    menuItems: structuredClone(seedMenuItems).map(normalizeMenuItem),
     entries: [],
+    settings: structuredClone(DEFAULT_BAKERY_SETTINGS),
   };
 }
 
@@ -55,6 +83,7 @@ export class MemoryRepository implements Repository {
       components: this.state.components,
       menuItems: this.state.menuItems,
       menu: { id: "current", weekOf: null, entries: this.state.entries },
+      settings: this.state.settings,
     };
   }
 
@@ -83,9 +112,10 @@ export class MemoryRepository implements Repository {
   }
 
   async upsertMenuItem(item: MenuItem): Promise<void> {
-    const i = this.state.menuItems.findIndex((m) => m.id === item.id);
-    if (i >= 0) this.state.menuItems[i] = item;
-    else this.state.menuItems.push(item);
+    const normalized = normalizeMenuItem(item);
+    const i = this.state.menuItems.findIndex((m) => m.id === normalized.id);
+    if (i >= 0) this.state.menuItems[i] = normalized;
+    else this.state.menuItems.push(normalized);
     this.persist();
   }
 
@@ -108,6 +138,11 @@ export class MemoryRepository implements Repository {
     const i = this.state.ingredients.findIndex((x) => x.id === ingredient.id);
     if (i >= 0) this.state.ingredients[i] = ingredient;
     else this.state.ingredients.push(ingredient);
+    this.persist();
+  }
+
+  async updateBakerySettings(settings: BakerySettings): Promise<void> {
+    this.state.settings = { ...settings, id: "default" };
     this.persist();
   }
 

@@ -1,11 +1,19 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useApp } from "../state/AppState";
 import { scaleQtyText } from "../domain/scaling";
+import { unitCost } from "../domain/aggregate";
+import { G_PER_LB } from "../domain/scaling";
+
+function money(n: number): string {
+  return `$${n.toFixed(2)}`;
+}
 
 export function LibraryPage() {
-  const { data } = useApp();
+  const { data, repo, refresh } = useApp();
   const [scale, setScale] = useState(1);
   const [tab, setTab] = useState<"components" | "items" | "ingredients">("components");
+  const [draft, setDraft] = useState<Record<string, { price: string; qty: string }>>({});
 
   const ingName = useMemo(() => {
     const m = new Map(data!.ingredients.map((i) => [i.id, i.name]));
@@ -16,6 +24,22 @@ export function LibraryPage() {
     () => new Map(data!.components.map((c) => [c.id, c])),
     [data]
   );
+
+  const pricedCount = data!.ingredients.filter((i) => unitCost(i) != null).length;
+
+  async function savePrice(id: string) {
+    const d = draft[id];
+    if (!d) return;
+    const ing = data!.ingredients.find((i) => i.id === id);
+    if (!ing) return;
+    const price = d.price === "" ? null : Number(d.price);
+    const qty = d.qty === "" ? null : Number(d.qty);
+    await repo.updateIngredientPrice(id, price, qty, ing.baseUnit);
+    const next = { ...draft };
+    delete next[id];
+    setDraft(next);
+    await refresh();
+  }
 
   return (
     <>
@@ -80,6 +104,9 @@ export function LibraryPage() {
                 <h3 style={{ margin: 0 }}>{m.name}</h3>
                 {m.isPrimary && <span className="pill rose">primary</span>}
                 {m.isPlaceholder && <span className="pill warn">placeholder</span>}
+                <span className="pill">
+                  {m.yieldAmount} {m.yieldUnit}
+                </span>
               </div>
               <ul style={{ listStyle: "none", padding: 0, margin: "10px 0 0" }}>
                 {m.components.map((ref) => {
@@ -99,6 +126,9 @@ export function LibraryPage() {
               {m.assemblyNotes && (
                 <p className="note-inline" style={{ marginTop: 10 }}>{m.assemblyNotes}</p>
               )}
+              <p className="note-inline" style={{ marginTop: 8 }}>
+                <Link to={`/pricer?item=${encodeURIComponent(m.id)}`}>Open in Pricer →</Link>
+              </p>
             </div>
           ))}
         </div>
@@ -106,36 +136,83 @@ export function LibraryPage() {
 
       {tab === "ingredients" && (
         <div className="card">
+          <h3 style={{ marginTop: 0 }}>Ingredient pack prices</h3>
+          <p className="note-inline">
+            {pricedCount} of {data!.ingredients.length} priced. Weight packs in grams (1 lb ={" "}
+            {Math.round(G_PER_LB)} g); count packs by count; spices may be per teaspoon.
+          </p>
           <table>
             <thead>
               <tr>
                 <th>Ingredient</th>
-                <th>Suggested store</th>
-                <th>Package</th>
-                <th>Rounding rule</th>
+                <th>Store</th>
+                <th className="num">Pack price ($)</th>
+                <th className="num">Pack contains</th>
+                <th className="num">$ / lb, ea, or tsp</th>
+                <th className="no-print"></th>
               </tr>
             </thead>
             <tbody>
-              {data!.ingredients.map((i) => (
-                <tr key={i.id}>
-                  <td>
-                    <strong>{i.name}</strong>
-                  </td>
-                  <td>
-                    {i.suggestedStore ? (
-                      <span className="pill">Suggested: {i.suggestedStore}</span>
-                    ) : (
-                      <span className="muted">—</span>
-                    )}
-                  </td>
-                  <td className="muted">{i.packageSize ?? "—"}</td>
-                  <td className="muted">
-                    {i.roundTo
-                      ? `round up to ${i.roundLabel ?? `${i.roundTo} ${i.baseUnit}`}`
-                      : "—"}
-                  </td>
-                </tr>
-              ))}
+              {data!.ingredients.map((ing) => {
+                const d = draft[ing.id] ?? {
+                  price: ing.packPrice?.toString() ?? "",
+                  qty: ing.packQty?.toString() ?? "",
+                };
+                const cost = unitCost(ing);
+                const per =
+                  cost == null
+                    ? "—"
+                    : ing.baseUnit === "g"
+                      ? `${money(cost * G_PER_LB)}/lb`
+                      : ing.baseUnit === "tsp"
+                        ? `${money(cost)}/tsp`
+                        : `${money(cost)}/ea`;
+                const dirty = draft[ing.id] != null;
+                return (
+                  <tr key={ing.id}>
+                    <td>
+                      <strong>{ing.name}</strong>
+                      <div className="note-inline">{ing.packageSize ?? ""}</div>
+                    </td>
+                    <td className="muted">{ing.suggestedStore ?? "—"}</td>
+                    <td className="num">
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={d.price}
+                        onChange={(e) =>
+                          setDraft({ ...draft, [ing.id]: { ...d, price: e.target.value } })
+                        }
+                        style={{ width: 90, textAlign: "right" }}
+                      />
+                    </td>
+                    <td className="num">
+                      <input
+                        type="number"
+                        min={0}
+                        step="any"
+                        value={d.qty}
+                        onChange={(e) =>
+                          setDraft({ ...draft, [ing.id]: { ...d, qty: e.target.value } })
+                        }
+                        style={{ width: 110, textAlign: "right" }}
+                      />
+                      <span className="muted" style={{ marginLeft: 6 }}>
+                        {ing.baseUnit}
+                      </span>
+                    </td>
+                    <td className="num muted">{per}</td>
+                    <td className="no-print">
+                      {dirty && (
+                        <button className="btn sm" onClick={() => savePrice(ing.id)}>
+                          Save
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
