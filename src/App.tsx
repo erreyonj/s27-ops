@@ -42,15 +42,17 @@ function SetupPrompt() {
       <p className="eyebrow">One-time setup</p>
       <h2>Your database is connected but empty.</h2>
       <p className="muted">
-        Load the starter ingredients, components, and the three primary cupcakes
-        (Oreo, Strawberry, and the placeholder Vanilla) into your Supabase project.
+        Load the full legacy library (priced ingredients, recipe components, cake
+        flavors, and products) into your Supabase project.
       </p>
       <button className="btn" onClick={seed} disabled={busy}>
         {busy ? "Loading starter data…" : "Load starter recipes"}
       </button>
       {err && (
         <p className="error-text" style={{ marginTop: 10 }}>
-          {err} — make sure you ran <code>supabase/schema.sql</code> in the SQL editor first.
+          {err} — make sure you ran <code>supabase/schema.sql</code> (and{" "}
+          <code>supabase/migration_tsp.sql</code> on existing projects) in the SQL
+          editor first.
         </p>
       )}
     </div>

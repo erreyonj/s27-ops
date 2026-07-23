@@ -5,7 +5,7 @@ create table if not exists raw_ingredients (
   id text primary key,
   name text not null,
   category text not null default 'other',
-  base_unit text not null check (base_unit in ('g', 'count')),
+  base_unit text not null check (base_unit in ('g', 'count', 'tsp')),
   suggested_store text,
   package_size text,
   -- Rounding buffer for grocery lists: round purchase up to a multiple of this
@@ -15,7 +15,7 @@ create table if not exists raw_ingredients (
   -- Pricing (Section C): price of one purchased pack and how much is in it.
   pack_price numeric,
   pack_qty numeric,
-  pack_qty_unit text check (pack_qty_unit in ('g', 'count')),
+  pack_qty_unit text check (pack_qty_unit in ('g', 'count', 'tsp')),
   created_at timestamptz not null default now()
 );
 
@@ -37,6 +37,7 @@ create table if not exists component_lines (
   detail text, -- secondary display, e.g. "220 g"
   grams numeric, -- per single batch, for weight aggregation
   count numeric, -- per single batch, for count aggregation (eggs, lemons)
+  tsp numeric, -- per single batch, for tsp-priced spices/extracts
   sort int not null default 0
 );
 

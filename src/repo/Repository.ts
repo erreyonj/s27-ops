@@ -1,5 +1,6 @@
 import type {
   AppData,
+  BaseUnit,
   ItemComponent,
   MenuItem,
   RawIngredient,
@@ -21,7 +22,7 @@ export interface Repository {
     id: string,
     packPrice: number | null,
     packQty: number | null,
-    packQtyUnit: "g" | "count" | null
+    packQtyUnit: BaseUnit | null
   ): Promise<void>;
   upsertIngredient(ingredient: RawIngredient): Promise<void>;
 

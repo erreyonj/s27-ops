@@ -1,4 +1,4 @@
-export type BaseUnit = "g" | "count";
+export type BaseUnit = "g" | "count" | "tsp";
 
 export interface RawIngredient {
   id: string;
@@ -23,6 +23,8 @@ export interface ComponentLine {
   detail: string | null;
   grams: number | null;
   count: number | null;
+  /** Teaspoons per batch (for tsp-priced spices/extracts). */
+  tsp: number | null;
   sort: number;
 }
 

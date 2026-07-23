@@ -5,6 +5,7 @@
 import { seedComponents, seedIngredients, seedMenuItems } from "../data/seed";
 import type {
   AppData,
+  BaseUnit,
   ItemComponent,
   MenuItem,
   MenuEntry,
@@ -92,7 +93,7 @@ export class MemoryRepository implements Repository {
     id: string,
     packPrice: number | null,
     packQty: number | null,
-    packQtyUnit: "g" | "count" | null
+    packQtyUnit: BaseUnit | null
   ): Promise<void> {
     const ing = this.state.ingredients.find((x) => x.id === id);
     if (ing) {

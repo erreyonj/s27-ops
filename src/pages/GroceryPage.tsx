@@ -21,6 +21,10 @@ function amountText(line: GroceryLine): string {
       return `${rounded} (${Math.round(rounded / ing.roundTo)} ${ing.roundLabel})`;
     return String(rounded);
   }
+  if (ing.baseUnit === "tsp") {
+    const n = line.rounded;
+    return n === 1 ? "1 tsp" : `${n} tsp`;
+  }
   return formatWeight(line.rounded);
 }
 

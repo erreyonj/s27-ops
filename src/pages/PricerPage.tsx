@@ -42,8 +42,9 @@ export function PricerPage() {
       <h1>What should it sell for?</h1>
       <p className="muted">
         Enter what you pay per pack for each ingredient. Costs roll up per component, per
-        menu item, per unit — then a margin multiplier suggests a retail price. The Excel
-        cost sheet can be imported here later to fill prices in bulk.
+        menu item, per unit — then a margin multiplier suggests a retail price. Starter
+        prices and recipes come from the legacy Excel pricer via{" "}
+        <code>npm run import:legacy</code>.
       </p>
 
       <div className="card">
@@ -112,15 +113,15 @@ export function PricerPage() {
         <p className="note-inline">
           {pricedCount} of {data!.ingredients.length} ingredients priced. Weight items are
           per pack in grams (1 lb = {Math.round(G_PER_LB)} g); count items are per pack
-          count (e.g. 60 eggs).
+          count (e.g. 60 eggs); spices/extracts may be per pack in teaspoons.
         </p>
         <table>
           <thead>
             <tr>
               <th>Ingredient</th>
               <th className="num">Pack price ($)</th>
-              <th className="num">Pack contains ({"g / count"})</th>
-              <th className="num">$ / lb or ea</th>
+              <th className="num">Pack contains (g / count / tsp)</th>
+              <th className="num">$ / lb, ea, or tsp</th>
               <th className="no-print"></th>
             </tr>
           </thead>
@@ -136,6 +137,8 @@ export function PricerPage() {
                   ? "—"
                   : ing.baseUnit === "g"
                   ? `${money(cost * G_PER_LB)}/lb`
+                  : ing.baseUnit === "tsp"
+                  ? `${money(cost)}/tsp`
                   : `${money(cost)}/ea`;
               const dirty = draft[ing.id] != null;
               return (

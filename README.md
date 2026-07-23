@@ -19,14 +19,24 @@ Without Supabase keys, the app runs in **demo mode** (seeded, in-memory, nothing
 1. `npm install`
 2. Create a free project at [supabase.com](https://supabase.com).
 3. In the Supabase **SQL Editor**, paste and run `supabase/schema.sql`.
+   - If the project already existed before tsp support, also run `supabase/migration_tsp.sql`.
 4. In **Authentication -> Users**, add the single shared bakery user (email + password).
 5. Copy `.env.example` to `.env` and fill (Settings -> API):
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_PUBLISHABLE_KEY` (the `sb_publishable_...` key; the legacy anon key also works under `VITE_SUPABASE_ANON_KEY`)
 6. `npm run dev`, sign in with the shared account, then click **Load starter recipes**
-   on the setup screen — this seeds ingredients, components, and the 3 primary cupcakes
+   on the setup screen — this seeds ingredients, components, and menu items
    straight from the browser (no service-role key needed).
    - Alternative: `npm run seed` from the CLI, which needs `SUPABASE_SERVICE_ROLE_KEY`.
+
+## Legacy Excel import
+
+The full recipe/price library is generated from `Legacy-Pricer-Inventory.xlsx` (gitignored):
+
+```bash
+npm run import:legacy   # regenerates src/data/seed.ts + scripts/import-report.md
+npm run seed            # optional: push seed to Supabase
+```
 
 ## Deploy (Netlify)
 
@@ -65,6 +75,5 @@ a quantity change should appear on the other device within a second or two (Real
 
 ## Notes
 
-- The Vanilla Cupcake is seeded as a **placeholder** (derived from the lemon base, no zest). Replace it via the Library/Builder when the real recipe is uploaded.
 - Supabase free tier pauses after ~7 days of inactivity — resume with one click in the dashboard.
-- The Excel cost spreadsheet can later be mapped into the Pricer's ingredient price table.
+- Re-import the Excel library with `npm run import:legacy` after Materials/recipe edits; see `scripts/import-report.md` for unmatched names and cost spot-checks.

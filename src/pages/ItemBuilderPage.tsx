@@ -77,6 +77,7 @@ export function ItemBuilderPage() {
           detail: null,
           grams: ing.baseUnit === "g" ? 0 : null,
           count: ing.baseUnit === "count" ? 0 : null,
+          tsp: ing.baseUnit === "tsp" ? 0 : null,
           sort: b.lines.length,
         };
         return { ...b, lines: [...b.lines, line] };
@@ -348,7 +349,8 @@ export function ItemBuilderPage() {
                   )}
                   {b.lines.map((l, i) => {
                     const ing = data!.ingredients.find((x) => x.id === l.ingredientId);
-                    const isCount = ing?.baseUnit === "count";
+                    const unit = ing?.baseUnit ?? "g";
+                    const qtyVal = unit === "count" ? l.count : unit === "tsp" ? l.tsp : l.grams;
                     return (
                       <div className="line-row" key={`${l.ingredientId}-${i}`}>
                         <span>
@@ -356,7 +358,7 @@ export function ItemBuilderPage() {
                         </span>
                         <input
                           type="text"
-                          placeholder={isCount ? "e.g. 3" : 'e.g. "1 3/4 cups"'}
+                          placeholder={unit === "count" ? "e.g. 3" : unit === "tsp" ? "e.g. 1 tsp" : 'e.g. "1 3/4 cups"'}
                           value={scale === 1 ? l.qtyText : scaleQtyText(l.qtyText, scale)}
                           disabled={scale !== 1}
                           onChange={(e) => {
@@ -369,13 +371,15 @@ export function ItemBuilderPage() {
                           type="number"
                           min={0}
                           step="any"
-                          placeholder={isCount ? "count" : "grams"}
-                          value={(isCount ? l.count : l.grams) ?? ""}
+                          placeholder={unit === "count" ? "count" : unit === "tsp" ? "tsp" : "grams"}
+                          value={qtyVal ?? ""}
                           disabled={scale !== 1}
                           onChange={(e) => {
                             const v = e.target.value === "" ? null : Number(e.target.value);
                             const lines = [...b.lines];
-                            lines[i] = isCount ? { ...l, count: v } : { ...l, grams: v };
+                            if (unit === "count") lines[i] = { ...l, count: v };
+                            else if (unit === "tsp") lines[i] = { ...l, tsp: v };
+                            else lines[i] = { ...l, grams: v };
                             updateBlock(b.key, { lines });
                           }}
                         />

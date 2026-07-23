@@ -61,6 +61,7 @@ export class SupabaseRepository implements Repository {
           detail: l.detail,
           grams: l.grams === null ? null : Number(l.grams),
           count: l.count === null ? null : Number(l.count),
+          tsp: l.tsp === null || l.tsp === undefined ? null : Number(l.tsp),
           sort: l.sort,
         })),
     }));
@@ -149,6 +150,7 @@ export class SupabaseRepository implements Repository {
           detail: l.detail,
           grams: l.grams,
           count: l.count,
+          tsp: l.tsp ?? null,
           sort: i,
         }))
       );
@@ -186,7 +188,7 @@ export class SupabaseRepository implements Repository {
     id: string,
     packPrice: number | null,
     packQty: number | null,
-    packQtyUnit: "g" | "count" | null
+    packQtyUnit: BaseUnit | null
   ): Promise<void> {
     const sb = getSupabase();
     const { error } = await sb
