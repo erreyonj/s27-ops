@@ -45,13 +45,6 @@ const NAME_ALIASES: Record<string, string> = {
   "Avocado Oil": "Avocado Oil",
 };
 
-/** Explicit yield overrides (sheet name → { amount, unit }). */
-const YIELD_OVERRIDES: Record<string, { amount: number; unit: string }> = {
-  "Vanilla Cupcake": { amount: 12, unit: "cupcakes" },
-  "Carrot Cake Cupcakes": { amount: 12, unit: "cupcakes" },
-  "Chocolate Cupcakes": { amount: 24, unit: "cupcakes" },
-};
-
 type BaseUnit = "g" | "count" | "tsp";
 type ComponentType = "cake" | "frosting" | "filling" | "topping" | "dough" | "other";
 
@@ -434,20 +427,16 @@ async function main() {
     }
 
     const type = classifyType(sheetName, cakeBases, frostings, fillings);
-    const override = YIELD_OVERRIDES[sheetName.trim()];
-    let yieldAmount = 1;
+    // Always import as 1 batch; set real yields in Library. Pricer then shows
+    // batch × margin until per-unit yields are filled in.
+    const yieldAmount = 1;
     let yieldUnit = "batch";
-    if (override) {
-      yieldAmount = override.amount;
-      yieldUnit = override.unit;
-      yieldNotes.push(`${sheetName}: yield ${yieldAmount} ${yieldUnit} (override)`);
-    } else if (
+    if (
       cakeComponentNames.has(sheetName.trim()) ||
       cakeBases.has(sheetName.trim()) ||
       frostings.has(sheetName.trim()) ||
       fillings.has(sheetName.trim())
     ) {
-      yieldAmount = 1;
       yieldUnit = "cake batch";
       yieldNotes.push(`${sheetName}: yield 1 cake batch (Cake Builder component)`);
     } else {

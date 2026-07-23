@@ -170,8 +170,8 @@ export const seedComponents: ItemComponent[] = [
     id: "comp-carrot-cake-cupcakes",
     name: "Carrot Cake Cupcakes",
     type: "cake",
-    yieldAmount: 12,
-    yieldUnit: "cupcakes",
+    yieldAmount: 1,
+    yieldUnit: "batch",
     notes: "Legacy Excel batch material cost ≈ $2.90",
     lines: [
       { ingredientId: "carrots", qtyText: "165 g", detail: null, grams: 165, count: null, tsp: null, sort: 0 },
@@ -193,8 +193,8 @@ export const seedComponents: ItemComponent[] = [
     id: "comp-chocolate-cupcakes",
     name: "Chocolate Cupcakes",
     type: "cake",
-    yieldAmount: 24,
-    yieldUnit: "cupcakes",
+    yieldAmount: 1,
+    yieldUnit: "batch",
     notes: "Legacy Excel batch material cost ≈ $6.20",
     lines: [
       { ingredientId: "all-purpose-flour", qtyText: "227 g", detail: null, grams: 227, count: null, tsp: null, sort: 0 },
@@ -215,8 +215,8 @@ export const seedComponents: ItemComponent[] = [
     id: "comp-vanilla-cupcake",
     name: "Vanilla Cupcake",
     type: "cake",
-    yieldAmount: 12,
-    yieldUnit: "cupcakes",
+    yieldAmount: 1,
+    yieldUnit: "batch",
     notes: "Legacy Excel batch material cost ≈ $3.53",
     lines: [
       { ingredientId: "cake-flour", qtyText: "182 g", detail: null, grams: 182, count: null, tsp: null, sort: 0 },
