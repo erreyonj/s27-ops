@@ -42,7 +42,31 @@ export class SupabaseRepository implements Repository {
       sb.from("current_menu").select("*").eq("id", "current").maybeSingle(),
     ]);
     for (const res of [ing, comps, lines, items, itemComps, entries, menuRow]) {
-      if (res.error) throw res.error;
+      if (res.error) {
+        // #region agent log
+        fetch("http://127.0.0.1:7649/ingest/62df8067-0c40-42dd-81ce-cd8af4651473", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Debug-Session-Id": "99ac98",
+          },
+          body: JSON.stringify({
+            sessionId: "99ac98",
+            runId: "jwt-pre",
+            hypothesisId: "C,D,E",
+            location: "SupabaseRepository.ts:loadAll:queryError",
+            message: "one of parallel selects failed",
+            data: {
+              errMsg: res.error.message,
+              errCode: (res.error as any).code ?? null,
+              errDetails: (res.error as any).details ?? null,
+            },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion
+        throw res.error;
+      }
     }
 
     const components: ItemComponent[] = (comps.data ?? []).map((c: any) => ({

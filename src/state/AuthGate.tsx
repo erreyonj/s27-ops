@@ -28,7 +28,44 @@ export function AuthGate({ children }: { children: ReactNode }) {
     e.preventDefault();
     setBusy(true);
     setErr(null);
-    const { error } = await getSupabase().auth.signInWithPassword({ email, password });
+    const clientNowMs = Date.now();
+    const { data, error } = await getSupabase().auth.signInWithPassword({ email, password });
+    // #region agent log
+    {
+      const { peekJwtClaims, supabaseHost } = await import("../lib/supabase");
+      const claims = peekJwtClaims(data.session?.access_token);
+      const skewSec =
+        claims?.iat != null ? claims.iat - Math.floor(clientNowMs / 1000) : null;
+      fetch("http://127.0.0.1:7649/ingest/62df8067-0c40-42dd-81ce-cd8af4651473", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Debug-Session-Id": "99ac98",
+        },
+        body: JSON.stringify({
+          sessionId: "99ac98",
+          runId: "jwt-pre",
+          hypothesisId: "A,B",
+          location: "AuthGate.tsx:signIn",
+          message: "signIn result vs client clock",
+          data: {
+            pageHost: typeof location !== "undefined" ? location.host : null,
+            ok: !error,
+            errMsg: error?.message ?? null,
+            hasSession: Boolean(data.session),
+            clientIso: new Date(clientNowMs).toISOString(),
+            clientNowSec: Math.floor(clientNowMs / 1000),
+            jwtIat: claims?.iat ?? null,
+            jwtExp: claims?.exp ?? null,
+            skewSec,
+            iatInFutureVsClient: skewSec != null ? skewSec > 0 : null,
+            supabaseHost: supabaseHost(),
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+    }
+    // #endregion
     if (error) setErr(error.message);
     setBusy(false);
   }
