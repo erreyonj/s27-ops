@@ -1,12 +1,14 @@
 import { getSupabase } from "../lib/supabase";
 import { seedComponents, seedIngredients, seedMenuItems } from "../data/seed";
-import type {
-  AppData,
-  BaseUnit,
-  ComponentType,
-  ItemComponent,
-  MenuItem,
-  RawIngredient,
+import {
+  DEFAULT_BAKERY_SETTINGS,
+  type AppData,
+  type BakerySettings,
+  type BaseUnit,
+  type ComponentType,
+  type ItemComponent,
+  type MenuItem,
+  type RawIngredient,
 } from "../domain/types";
 import type { Repository } from "./Repository";
 
@@ -27,12 +29,49 @@ function toIngredient(r: any): RawIngredient {
   };
 }
 
+function toSettings(r: any | null | undefined): BakerySettings {
+  if (!r) return { ...DEFAULT_BAKERY_SETTINGS };
+  return {
+    id: r.id ?? "default",
+    hourlyRate: Number(r.hourly_rate ?? DEFAULT_BAKERY_SETTINGS.hourlyRate),
+    salesTaxPct: Number(r.sales_tax_pct ?? DEFAULT_BAKERY_SETTINGS.salesTaxPct),
+    defaultMarginPct: Number(r.default_margin_pct ?? DEFAULT_BAKERY_SETTINGS.defaultMarginPct),
+    defaultDiscountPct: Number(
+      r.default_discount_pct ?? DEFAULT_BAKERY_SETTINGS.defaultDiscountPct
+    ),
+  };
+}
+
+function toMenuItem(m: any, itemComps: any[]): MenuItem {
+  return {
+    id: m.id,
+    name: m.name,
+    flavorTag: m.flavor_tag,
+    isPrimary: m.is_primary,
+    isPlaceholder: m.is_placeholder,
+    assemblyNotes: m.assembly_notes,
+    yieldAmount: Number(m.yield_amount ?? 1),
+    yieldUnit: m.yield_unit ?? "batch",
+    laborHours: m.labor_hours === null || m.labor_hours === undefined ? null : Number(m.labor_hours),
+    marginPct: m.margin_pct === null || m.margin_pct === undefined ? null : Number(m.margin_pct),
+    discountPct:
+      m.discount_pct === null || m.discount_pct === undefined ? null : Number(m.discount_pct),
+    components: itemComps
+      .filter((mc: any) => mc.menu_item_id === m.id)
+      .map((mc: any) => ({
+        componentId: mc.component_id,
+        scale: Number(mc.scale),
+        sort: mc.sort,
+      })),
+  };
+}
+
 export class SupabaseRepository implements Repository {
   readonly isDemo = false;
 
   async loadAll(): Promise<AppData> {
     const sb = getSupabase();
-    const [ing, comps, lines, items, itemComps, entries, menuRow] = await Promise.all([
+    const [ing, comps, lines, items, itemComps, entries, menuRow, settingsRow] = await Promise.all([
       sb.from("raw_ingredients").select("*").order("name"),
       sb.from("item_components").select("*").order("name"),
       sb.from("component_lines").select("*").order("sort"),
@@ -40,33 +79,10 @@ export class SupabaseRepository implements Repository {
       sb.from("menu_item_components").select("*").order("sort"),
       sb.from("current_menu_entries").select("*").eq("menu_id", "current"),
       sb.from("current_menu").select("*").eq("id", "current").maybeSingle(),
+      sb.from("bakery_settings").select("*").eq("id", "default").maybeSingle(),
     ]);
-    for (const res of [ing, comps, lines, items, itemComps, entries, menuRow]) {
-      if (res.error) {
-        // #region agent log
-        fetch("http://127.0.0.1:7649/ingest/62df8067-0c40-42dd-81ce-cd8af4651473", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Debug-Session-Id": "99ac98",
-          },
-          body: JSON.stringify({
-            sessionId: "99ac98",
-            runId: "jwt-pre",
-            hypothesisId: "C,D,E",
-            location: "SupabaseRepository.ts:loadAll:queryError",
-            message: "one of parallel selects failed",
-            data: {
-              errMsg: res.error.message,
-              errCode: (res.error as any).code ?? null,
-              errDetails: (res.error as any).details ?? null,
-            },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-        // #endregion
-        throw res.error;
-      }
+    for (const res of [ing, comps, lines, items, itemComps, entries, menuRow, settingsRow]) {
+      if (res.error) throw res.error;
     }
 
     const components: ItemComponent[] = (comps.data ?? []).map((c: any) => ({
@@ -90,21 +106,9 @@ export class SupabaseRepository implements Repository {
         })),
     }));
 
-    const menuItems: MenuItem[] = (items.data ?? []).map((m: any) => ({
-      id: m.id,
-      name: m.name,
-      flavorTag: m.flavor_tag,
-      isPrimary: m.is_primary,
-      isPlaceholder: m.is_placeholder,
-      assemblyNotes: m.assembly_notes,
-      components: (itemComps.data ?? [])
-        .filter((mc: any) => mc.menu_item_id === m.id)
-        .map((mc: any) => ({
-          componentId: mc.component_id,
-          scale: Number(mc.scale),
-          sort: mc.sort,
-        })),
-    }));
+    const menuItems: MenuItem[] = (items.data ?? []).map((m: any) =>
+      toMenuItem(m, itemComps.data ?? [])
+    );
 
     return {
       ingredients: (ing.data ?? []).map(toIngredient),
@@ -118,6 +122,7 @@ export class SupabaseRepository implements Repository {
           quantity: e.quantity,
         })),
       },
+      settings: toSettings(settingsRow.data),
     };
   }
 
@@ -162,7 +167,6 @@ export class SupabaseRepository implements Repository {
       notes: component.notes,
     });
     if (error) throw error;
-    // Replace lines wholesale (simplest correct behavior for an editor form).
     const del = await sb.from("component_lines").delete().eq("component_id", component.id);
     if (del.error) throw del.error;
     if (component.lines.length) {
@@ -191,6 +195,11 @@ export class SupabaseRepository implements Repository {
       is_primary: item.isPrimary,
       is_placeholder: item.isPlaceholder,
       assembly_notes: item.assemblyNotes,
+      yield_amount: item.yieldAmount,
+      yield_unit: item.yieldUnit,
+      labor_hours: item.laborHours,
+      margin_pct: item.marginPct,
+      discount_pct: item.discountPct,
     });
     if (error) throw error;
     const del = await sb.from("menu_item_components").delete().eq("menu_item_id", item.id);
@@ -240,10 +249,21 @@ export class SupabaseRepository implements Repository {
     if (error) throw error;
   }
 
+  async updateBakerySettings(settings: BakerySettings): Promise<void> {
+    const sb = getSupabase();
+    const { error } = await sb.from("bakery_settings").upsert({
+      id: "default",
+      hourly_rate: settings.hourlyRate,
+      sales_tax_pct: settings.salesTaxPct,
+      default_margin_pct: settings.defaultMarginPct,
+      default_discount_pct: settings.defaultDiscountPct,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) throw error;
+  }
+
   onMenuChange(cb: () => void): () => void {
     const sb = getSupabase();
-    // Debounce so bursts of writes (seeding, saving a multi-line recipe on
-    // another device) collapse into a single reload.
     let timer: ReturnType<typeof setTimeout> | null = null;
     const scheduleRefresh = () => {
       if (timer) clearTimeout(timer);
@@ -261,6 +281,15 @@ export class SupabaseRepository implements Repository {
 
   async seedStarterData(): Promise<void> {
     const sb = getSupabase();
+
+    const settingsRes = await sb.from("bakery_settings").upsert({
+      id: "default",
+      hourly_rate: DEFAULT_BAKERY_SETTINGS.hourlyRate,
+      sales_tax_pct: DEFAULT_BAKERY_SETTINGS.salesTaxPct,
+      default_margin_pct: DEFAULT_BAKERY_SETTINGS.defaultMarginPct,
+      default_discount_pct: DEFAULT_BAKERY_SETTINGS.defaultDiscountPct,
+    });
+    if (settingsRes.error) throw settingsRes.error;
 
     const ingRes = await sb.from("raw_ingredients").upsert(
       seedIngredients.map((i) => ({

@@ -60,7 +60,25 @@ export interface MenuItem {
   isPrimary: boolean;
   isPlaceholder: boolean;
   assemblyNotes: string | null;
+  /** How many sellable units one composed item represents (usually 1). */
+  yieldAmount: number;
+  /** Display unit for retail, e.g. cake | cupcake | batch. */
+  yieldUnit: string;
+  /** Labor hours for one yield unit; null = not set (warn, treat as $0). */
+  laborHours: number | null;
+  /** null = inherit bakery default; 0 = intentionally zeroed. */
+  marginPct: number | null;
+  /** null = inherit bakery default; 0 = intentionally zeroed. */
+  discountPct: number | null;
   components: MenuItemComponentRef[];
+}
+
+export interface BakerySettings {
+  id: string;
+  hourlyRate: number;
+  salesTaxPct: number;
+  defaultMarginPct: number;
+  defaultDiscountPct: number;
 }
 
 export interface MenuEntry {
@@ -79,7 +97,16 @@ export interface AppData {
   components: ItemComponent[];
   menuItems: MenuItem[];
   menu: CurrentMenu;
+  settings: BakerySettings;
 }
+
+export const DEFAULT_BAKERY_SETTINGS: BakerySettings = {
+  id: "default",
+  hourlyRate: 20,
+  salesTaxPct: 0,
+  defaultMarginPct: 0.35,
+  defaultDiscountPct: 0,
+};
 
 /** Aggregated grocery output. */
 export interface GroceryLine {

@@ -48,8 +48,26 @@ create table if not exists menu_items (
   is_primary boolean not null default false,
   is_placeholder boolean not null default false,
   assembly_notes text,
+  -- Sellable yield of one composed item (Pricer displays retail as $/yield_unit).
+  yield_amount numeric not null default 1,
+  yield_unit text not null default 'batch',
+  -- Pricing calculator (nullable hours; null margin/discount = inherit bakery defaults; 0 = zeroed).
+  labor_hours numeric,
+  margin_pct numeric,
+  discount_pct numeric,
   created_at timestamptz not null default now()
 );
+
+create table if not exists bakery_settings (
+  id text primary key default 'default',
+  hourly_rate numeric not null default 20,
+  sales_tax_pct numeric not null default 0,
+  default_margin_pct numeric not null default 0.35,
+  default_discount_pct numeric not null default 0,
+  updated_at timestamptz not null default now()
+);
+
+insert into bakery_settings (id) values ('default') on conflict do nothing;
 
 create table if not exists menu_item_components (
   id bigint generated always as identity primary key,
@@ -82,13 +100,15 @@ alter table menu_items enable row level security;
 alter table menu_item_components enable row level security;
 alter table current_menu enable row level security;
 alter table current_menu_entries enable row level security;
+alter table bakery_settings enable row level security;
 
 do $$
 declare t text;
 begin
   foreach t in array array[
     'raw_ingredients','item_components','component_lines',
-    'menu_items','menu_item_components','current_menu','current_menu_entries'
+    'menu_items','menu_item_components','current_menu','current_menu_entries',
+    'bakery_settings'
   ] loop
     execute format('drop policy if exists "authenticated full access" on %I', t);
     execute format(
@@ -104,7 +124,8 @@ declare t text;
 begin
   foreach t in array array[
     'raw_ingredients','item_components','component_lines',
-    'menu_items','menu_item_components','current_menu','current_menu_entries'
+    'menu_items','menu_item_components','current_menu','current_menu_entries',
+    'bakery_settings'
   ] loop
     begin
       execute format('alter publication supabase_realtime add table %I', t);

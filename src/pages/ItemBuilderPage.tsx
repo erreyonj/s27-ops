@@ -142,6 +142,11 @@ export function ItemBuilderPage() {
         isPrimary: false,
         isPlaceholder: false,
         assemblyNotes: assemblyNotes.trim() || null,
+        yieldAmount: 1,
+        yieldUnit: "batch",
+        laborHours: null,
+        marginPct: null,
+        discountPct: null,
         components: refs,
       });
 

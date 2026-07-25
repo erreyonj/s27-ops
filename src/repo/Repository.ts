@@ -1,5 +1,6 @@
 import type {
   AppData,
+  BakerySettings,
   BaseUnit,
   ItemComponent,
   MenuItem,
@@ -25,6 +26,8 @@ export interface Repository {
     packQtyUnit: BaseUnit | null
   ): Promise<void>;
   upsertIngredient(ingredient: RawIngredient): Promise<void>;
+
+  updateBakerySettings(settings: BakerySettings): Promise<void>;
 
   /** Subscribe to remote menu changes (returns unsubscribe). No-op in demo mode. */
   onMenuChange(cb: () => void): () => void;

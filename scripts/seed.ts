@@ -30,6 +30,18 @@ if (!url || !serviceKey) {
 const sb = createClient(url, serviceKey);
 
 async function run() {
+  console.log("Seeding bakery_settings…");
+  {
+    const { error } = await sb.from("bakery_settings").upsert({
+      id: "default",
+      hourly_rate: 20,
+      sales_tax_pct: 0,
+      default_margin_pct: 0.35,
+      default_discount_pct: 0,
+    });
+    if (error) throw error;
+  }
+
   console.log("Seeding raw_ingredients…");
   {
     const { error } = await sb.from("raw_ingredients").upsert(
@@ -87,6 +99,11 @@ async function run() {
       is_primary: m.isPrimary,
       is_placeholder: m.isPlaceholder,
       assembly_notes: m.assemblyNotes,
+      yield_amount: m.yieldAmount,
+      yield_unit: m.yieldUnit,
+      labor_hours: m.laborHours,
+      margin_pct: m.marginPct,
+      discount_pct: m.discountPct,
     });
     if (error) throw error;
     const del = await sb.from("menu_item_components").delete().eq("menu_item_id", m.id);
@@ -105,8 +122,15 @@ async function run() {
   const menu = await sb.from("current_menu").upsert({ id: "current" });
   if (menu.error) throw menu.error;
 
-  console.log("Done. Seeded", seedIngredients.length, "ingredients,",
-    seedComponents.length, "components,", seedMenuItems.length, "menu items.");
+  console.log(
+    "Done. Seeded",
+    seedIngredients.length,
+    "ingredients,",
+    seedComponents.length,
+    "components,",
+    seedMenuItems.length,
+    "menu items."
+  );
 }
 
 run().catch((e) => {

@@ -1,5 +1,6 @@
 import type {
   AppData,
+  BakerySettings,
   GroceryLine,
   ItemComponent,
   MenuItem,
@@ -164,4 +165,137 @@ export function menuItemCost(
     missing.push(...cost.missing);
   }
   return { item, perUnit, parts, missing: [...new Set(missing)] };
+}
+
+/** Draft overrides for the live calculator (session UI until Commit). */
+export interface QuoteDraft {
+  laborHours: number | null;
+  marginPct: number | null;
+  discountPct: number | null;
+}
+
+export interface MenuItemQuote {
+  item: MenuItem;
+  materials: number;
+  materialsParts: Array<{ name: string; perUnit: number }>;
+  missingIngredients: string[];
+  laborHours: number | null;
+  laborHoursMissing: boolean;
+  labor: number;
+  baseCost: number;
+  effectiveMarginPct: number;
+  marginInherited: boolean;
+  marginZeroed: boolean;
+  afterMargin: number;
+  effectiveDiscountPct: number;
+  discountInherited: boolean;
+  discountZeroed: boolean;
+  afterDiscount: number;
+  taxPct: number;
+  taxAmount: number;
+  suggestedRetail: number;
+  displayUnit: string;
+  warnings: string[];
+}
+
+/**
+ * Excel Cake Builder–style quote:
+ * materials + labor → / (1 - margin) → × (1 - discount) → × (1 + tax)
+ */
+export function quoteMenuItem(
+  item: MenuItem,
+  compById: Map<string, ItemComponent>,
+  ingById: Map<string, RawIngredient>,
+  settings: BakerySettings,
+  draft?: QuoteDraft
+): MenuItemQuote {
+  const mats = menuItemCost(item, compById, ingById);
+  const yieldAmt = item.yieldAmount > 0 ? item.yieldAmount : 1;
+  const materials = mats.perUnit / yieldAmt;
+
+  const laborHours = draft ? draft.laborHours : item.laborHours;
+  const laborHoursMissing = laborHours == null;
+  const labor =
+    laborHoursMissing || laborHours <= 0 ? 0 : laborHours * settings.hourlyRate;
+
+  const marginRaw = draft ? draft.marginPct : item.marginPct;
+  const marginInherited = marginRaw == null;
+  const effectiveMarginPct = marginInherited ? settings.defaultMarginPct : marginRaw;
+  const marginZeroed = !marginInherited && effectiveMarginPct === 0;
+
+  const discountRaw = draft ? draft.discountPct : item.discountPct;
+  const discountInherited = discountRaw == null;
+  const effectiveDiscountPct = discountInherited
+    ? settings.defaultDiscountPct
+    : discountRaw;
+  const discountZeroed = !discountInherited && effectiveDiscountPct === 0;
+
+  const baseCost = materials + labor;
+  const afterMargin =
+    effectiveMarginPct > 0 && effectiveMarginPct < 1
+      ? baseCost / (1 - effectiveMarginPct)
+      : baseCost;
+  const afterDiscount = afterMargin * (1 - Math.min(Math.max(effectiveDiscountPct, 0), 1));
+  const taxPct = settings.salesTaxPct;
+  const suggestedRetail = afterDiscount * (1 + Math.max(taxPct, 0));
+  const taxAmount = suggestedRetail - afterDiscount;
+
+  const warnings: string[] = [];
+  if (mats.missing.length) {
+    warnings.push(`Missing ingredient prices: ${mats.missing.slice(0, 5).join(", ")}${mats.missing.length > 5 ? "…" : ""}`);
+  }
+  if (laborHoursMissing) {
+    warnings.push("Labor hours not set — labor treated as $0");
+  } else if (laborHours === 0) {
+    warnings.push("Labor hours zeroed for this item");
+  }
+  if (marginInherited) {
+    warnings.push(
+      `Using bakery default margin ${(settings.defaultMarginPct * 100).toFixed(0)}%`
+    );
+  } else if (marginZeroed) {
+    warnings.push("Margin zeroed for this item");
+  }
+  if (discountInherited && settings.defaultDiscountPct > 0) {
+    warnings.push(
+      `Using bakery default discount ${(settings.defaultDiscountPct * 100).toFixed(0)}%`
+    );
+  } else if (discountZeroed) {
+    warnings.push("Discount zeroed for this item");
+  }
+  if (taxPct === 0) {
+    warnings.push("Sales tax is 0%");
+  }
+
+  return {
+    item,
+    materials,
+    materialsParts: mats.parts.map((p) => ({
+      name: p.name,
+      perUnit: p.perUnit / yieldAmt,
+    })),
+    missingIngredients: mats.missing,
+    laborHours,
+    laborHoursMissing,
+    labor,
+    baseCost,
+    effectiveMarginPct,
+    marginInherited,
+    marginZeroed,
+    afterMargin,
+    effectiveDiscountPct,
+    discountInherited,
+    discountZeroed,
+    afterDiscount,
+    taxPct,
+    taxAmount,
+    suggestedRetail,
+    displayUnit: item.yieldUnit || "batch",
+    warnings,
+  };
+}
+
+export function formatRetailPerUnit(amount: number, yieldUnit: string): string {
+  const unit = yieldUnit.trim() || "batch";
+  return `$${amount.toFixed(2)}/${unit}`;
 }

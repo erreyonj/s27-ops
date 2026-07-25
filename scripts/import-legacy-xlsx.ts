@@ -91,7 +91,21 @@ interface MenuItemOut {
   isPrimary: boolean;
   isPlaceholder: boolean;
   assemblyNotes: string | null;
+  yieldAmount: number;
+  yieldUnit: string;
+  laborHours: number | null;
+  marginPct: number | null;
+  discountPct: number | null;
   components: Array<{ componentId: string; scale: number; sort: number }>;
+}
+
+function menuItemYield(name: string, fromCakeBuilder: boolean): { amount: number; unit: string } {
+  if (fromCakeBuilder) return { amount: 1, unit: "cake" };
+  if (/Cupcake/i.test(name)) return { amount: 1, unit: "cupcake" };
+  if (/Cinnamon Roll/i.test(name)) return { amount: 1, unit: "batch" };
+  if (/Cookie|Brownie|Bar|Treat/i.test(name)) return { amount: 1, unit: "batch" };
+  if (/Pie|Pudding|Bread|Pound Cake/i.test(name)) return { amount: 1, unit: "batch" };
+  return { amount: 1, unit: "batch" };
 }
 
 function slugify(s: string): string {
@@ -497,6 +511,7 @@ async function main() {
       }
       refs.push({ componentId: cid, scale: 1, sort: sort++ });
     }
+    const yieldInfo = menuItemYield(combo.name, true);
     menuItems.push({
       id: `mi-${slugify(combo.name)}`,
       name: combo.name,
@@ -506,6 +521,11 @@ async function main() {
       assemblyNotes: [combo.cake, combo.frosting, combo.filling1, combo.filling2]
         .filter((x) => x && x !== "Clear")
         .join(" + "),
+      yieldAmount: yieldInfo.amount,
+      yieldUnit: yieldInfo.unit,
+      laborHours: null,
+      marginPct: null,
+      discountPct: null,
       components: refs,
     });
   }
@@ -514,6 +534,7 @@ async function main() {
     if (!isProductSheet(c.sheetName, cakeComponentNames)) continue;
     if (menuItems.some((m) => m.name === c.name)) continue;
     const isCupcake = /Cupcake/i.test(c.sheetName);
+    const yieldInfo = menuItemYield(c.name, false);
     menuItems.push({
       id: `mi-${slugify(c.name)}`,
       name: c.name,
@@ -521,6 +542,11 @@ async function main() {
       isPrimary: isCupcake,
       isPlaceholder: false,
       assemblyNotes: null,
+      yieldAmount: yieldInfo.amount,
+      yieldUnit: yieldInfo.unit,
+      laborHours: null,
+      marginPct: null,
+      discountPct: null,
       components: [{ componentId: c.id, scale: 1, sort: 0 }],
     });
   }
@@ -573,6 +599,11 @@ async function main() {
     linesOut.push(`    isPrimary: ${m.isPrimary},`);
     linesOut.push(`    isPlaceholder: ${m.isPlaceholder},`);
     linesOut.push(`    assemblyNotes: ${tsLiteral(m.assemblyNotes)},`);
+    linesOut.push(`    yieldAmount: ${m.yieldAmount},`);
+    linesOut.push(`    yieldUnit: ${tsLiteral(m.yieldUnit)},`);
+    linesOut.push(`    laborHours: ${tsLiteral(m.laborHours)},`);
+    linesOut.push(`    marginPct: ${tsLiteral(m.marginPct)},`);
+    linesOut.push(`    discountPct: ${tsLiteral(m.discountPct)},`);
     linesOut.push(`    components: [`);
     for (const ref of m.components) {
       linesOut.push(
