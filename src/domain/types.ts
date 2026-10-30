@@ -59,6 +59,8 @@ export interface MenuItem {
   flavorTag: string | null;
   isPrimary: boolean;
   isPlaceholder: boolean;
+  /** When true, name (+ flavor) appears on the public farmers market page. */
+  publishToSite: boolean;
   assemblyNotes: string | null;
   /** How many sellable units one composed item represents (usually 1). */
   yieldAmount: number;

@@ -98,6 +98,7 @@ async function run() {
       flavor_tag: m.flavorTag,
       is_primary: m.isPrimary,
       is_placeholder: m.isPlaceholder,
+      publish_to_site: m.publishToSite,
       assembly_notes: m.assemblyNotes,
       yield_amount: m.yieldAmount,
       yield_unit: m.yieldUnit,

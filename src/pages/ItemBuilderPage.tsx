@@ -141,6 +141,7 @@ export function ItemBuilderPage() {
         flavorTag: flavorTag.trim() || null,
         isPrimary: false,
         isPlaceholder: false,
+        publishToSite: false,
         assemblyNotes: assemblyNotes.trim() || null,
         yieldAmount: 1,
         yieldUnit: "batch",

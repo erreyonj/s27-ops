@@ -37,6 +37,7 @@ function normalizeMenuItem(m: MenuItem): MenuItem {
     laborHours: m.laborHours ?? null,
     marginPct: m.marginPct ?? null,
     discountPct: m.discountPct ?? null,
+    publishToSite: m.publishToSite ?? false,
   };
 }
 

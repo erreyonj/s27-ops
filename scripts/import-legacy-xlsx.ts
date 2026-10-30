@@ -90,6 +90,7 @@ interface MenuItemOut {
   flavorTag: string | null;
   isPrimary: boolean;
   isPlaceholder: boolean;
+  publishToSite: boolean;
   assemblyNotes: string | null;
   yieldAmount: number;
   yieldUnit: string;
@@ -518,6 +519,7 @@ async function main() {
       flavorTag: slugify(combo.name),
       isPrimary: false,
       isPlaceholder: false,
+      publishToSite: false,
       assemblyNotes: [combo.cake, combo.frosting, combo.filling1, combo.filling2]
         .filter((x) => x && x !== "Clear")
         .join(" + "),
@@ -541,6 +543,7 @@ async function main() {
       flavorTag: slugify(c.name),
       isPrimary: isCupcake,
       isPlaceholder: false,
+      publishToSite: false,
       assemblyNotes: null,
       yieldAmount: yieldInfo.amount,
       yieldUnit: yieldInfo.unit,
@@ -598,6 +601,7 @@ async function main() {
     linesOut.push(`    flavorTag: ${tsLiteral(m.flavorTag)},`);
     linesOut.push(`    isPrimary: ${m.isPrimary},`);
     linesOut.push(`    isPlaceholder: ${m.isPlaceholder},`);
+    linesOut.push(`    publishToSite: ${m.publishToSite},`);
     linesOut.push(`    assemblyNotes: ${tsLiteral(m.assemblyNotes)},`);
     linesOut.push(`    yieldAmount: ${m.yieldAmount},`);
     linesOut.push(`    yieldUnit: ${tsLiteral(m.yieldUnit)},`);

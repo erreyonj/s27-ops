@@ -81,6 +81,7 @@ suggestedRetail = afterDiscount × (1 + tax)
 3. In the Supabase **SQL Editor**, paste and run `supabase/schema.sql`.
    - Existing projects that predate tsp support: also run `supabase/migration_tsp.sql`.
    - Existing projects that predate the pricing redesign: also run `supabase/migration_pricing.sql`.
+   - Existing projects that predate the public market menu: also run `supabase/migration_public_menu.sql`.
 4. In **Authentication → Users**, add the bakery user(s) (email + password).
 5. Copy `.env.example` to `.env` and fill (Settings → API):
    - `VITE_SUPABASE_URL`

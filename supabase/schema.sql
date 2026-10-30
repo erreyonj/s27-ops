@@ -55,6 +55,8 @@ create table if not exists menu_items (
   labor_hours numeric,
   margin_pct numeric,
   discount_pct numeric,
+  -- Public farmers market page (names only via get_public_market_menu).
+  publish_to_site boolean not null default false,
   created_at timestamptz not null default now()
 );
 
@@ -91,6 +93,27 @@ create table if not exists current_menu_entries (
 );
 
 insert into current_menu (id) values ('current') on conflict do nothing;
+
+-- Public market menu RPC: returns only safe fields for published items (anon-callable).
+create or replace function get_public_market_menu()
+returns table (
+  id text,
+  name text,
+  flavor_tag text
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select m.id, m.name, m.flavor_tag
+  from menu_items m
+  where m.publish_to_site
+    and not m.is_placeholder
+  order by m.name;
+$$;
+
+revoke all on function get_public_market_menu() from public;
+grant execute on function get_public_market_menu() to anon, authenticated;
 
 -- Row Level Security: single shared login, so any authenticated user has full access.
 alter table raw_ingredients enable row level security;

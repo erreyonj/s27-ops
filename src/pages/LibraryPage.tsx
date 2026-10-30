@@ -41,6 +41,13 @@ export function LibraryPage() {
     await refresh();
   }
 
+  async function setPublishToSite(id: string, publishToSite: boolean) {
+    const item = data!.menuItems.find((m) => m.id === id);
+    if (!item || item.publishToSite === publishToSite) return;
+    await repo.upsertMenuItem({ ...item, publishToSite });
+    await refresh();
+  }
+
   return (
     <>
       <p className="eyebrow">Library</p>
@@ -104,6 +111,7 @@ export function LibraryPage() {
                 <h3 style={{ margin: 0 }}>{m.name}</h3>
                 {m.isPrimary && <span className="pill rose">primary</span>}
                 {m.isPlaceholder && <span className="pill warn">placeholder</span>}
+                {m.publishToSite && <span className="pill rose">on site</span>}
                 <span className="pill">
                   {m.yieldAmount} {m.yieldUnit}
                 </span>
@@ -126,6 +134,23 @@ export function LibraryPage() {
               {m.assemblyNotes && (
                 <p className="note-inline" style={{ marginTop: 10 }}>{m.assemblyNotes}</p>
               )}
+              <div
+                className="check-row no-print"
+                style={{
+                  marginTop: 12,
+                  borderBottom: "none",
+                  opacity: m.isPlaceholder ? 0.5 : 1,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  id={`publish-${m.id}`}
+                  checked={m.publishToSite}
+                  disabled={m.isPlaceholder}
+                  onChange={(e) => void setPublishToSite(m.id, e.target.checked)}
+                />
+                <label htmlFor={`publish-${m.id}`}>Publish to site</label>
+              </div>
               <p className="note-inline" style={{ marginTop: 8 }}>
                 <Link to={`/pricer?item=${encodeURIComponent(m.id)}`}>Open in Pricer →</Link>
               </p>
