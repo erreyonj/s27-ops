@@ -101,6 +101,51 @@ export function lineQty(
   return line.grams ?? 0;
 }
 
+const QTY_TEXT_RE =
+  /^(\d+(?:\.\d+)?|\d+\s+\d+\/\d+|\d+\/\d+)\s*(tbs|tbsp|tablespoons?|tsp|teaspoons?|g|grams?|ea|each|cups?)?\s*$/i;
+
+/** Soft check: qtyText unit vs stored base-unit quantity (catches tbs→1 bugs). */
+export function lineUnitMismatch(
+  line: { qtyText: string; grams: number | null; count: number | null; tsp: number | null },
+  baseUnit: RawIngredient["baseUnit"]
+): string | null {
+  const raw = (line.qtyText || "").trim();
+  if (!raw) return null;
+  const m = raw.match(QTY_TEXT_RE);
+  if (!m) return null;
+  const numTok = m[1];
+  const unitTok = (m[2] || "").toLowerCase();
+  let declared = 0;
+  if (/^\d+\s+\d+\/\d+$/.test(numTok)) {
+    const [w, f] = numTok.split(/\s+/);
+    const [n, d] = f.split("/").map(Number);
+    declared = parseInt(w, 10) + n / d;
+  } else if (/^\d+\/\d+$/.test(numTok)) {
+    const [n, d] = numTok.split("/").map(Number);
+    declared = n / d;
+  } else {
+    declared = parseFloat(numTok);
+  }
+  if (!(declared > 0)) return null;
+
+  const stored = lineQty(line, baseUnit);
+  if (!(stored > 0)) return null;
+
+  const isTbs = /^(tbs|tbsp|tablespoons?)$/.test(unitTok);
+  if (isTbs && baseUnit === "tsp") {
+    const expected = declared * 3;
+    if (Math.abs(stored - expected) > 0.05 && Math.abs(stored - declared) < 0.05) {
+      return `qtyText "${raw}" looks like tablespoons but stored tsp=${stored} (expected ~${expected})`;
+    }
+  }
+  if (isTbs && baseUnit === "g") {
+    if (stored <= declared + 0.05) {
+      return `qtyText "${raw}" looks like tablespoons but stored grams=${stored}`;
+    }
+  }
+  return null;
+}
+
 /** $ per base unit (per gram, count, or tsp), or null when unpriced. */
 export function unitCost(ing: RawIngredient): number | null {
   if (ing.packPrice == null || ing.packQty == null || ing.packQty <= 0) return null;
@@ -267,6 +312,38 @@ export function quoteMenuItem(
     warnings.push("Sales tax is 0%");
   }
 
+  const displayUnit = (item.yieldUnit || "batch").trim() || "batch";
+  // Plural sellable unit with yieldAmount 1 usually means the label is wrong
+  // (e.g. "/cupcakes" on a single-unit price).
+  if (yieldAmt === 1 && /s$/i.test(displayUnit) && !/^batch$/i.test(displayUnit)) {
+    warnings.push(
+      `Yield unit is plural ("${displayUnit}") but yield amount is 1 — check label vs per-unit price`
+    );
+  }
+
+  const unitMismatches: string[] = [];
+  for (const ref of item.components) {
+    const comp = compById.get(ref.componentId);
+    if (!comp) continue;
+    if (comp.yieldAmount <= 0) {
+      warnings.push(`Component "${comp.name}" has yield 0`);
+      continue;
+    }
+    for (const line of comp.lines) {
+      const ing = ingById.get(line.ingredientId);
+      if (!ing) continue;
+      const mismatch = lineUnitMismatch(line, ing.baseUnit);
+      if (mismatch) unitMismatches.push(`${comp.name}: ${ing.name}`);
+    }
+  }
+  if (unitMismatches.length) {
+    warnings.push(
+      `Possible qty unit mismatch: ${unitMismatches.slice(0, 4).join("; ")}${
+        unitMismatches.length > 4 ? "…" : ""
+      }`
+    );
+  }
+
   return {
     item,
     materials,
@@ -290,7 +367,7 @@ export function quoteMenuItem(
     taxPct,
     taxAmount,
     suggestedRetail,
-    displayUnit: item.yieldUnit || "batch",
+    displayUnit,
     warnings,
   };
 }

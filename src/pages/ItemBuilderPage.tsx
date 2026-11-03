@@ -36,6 +36,18 @@ function slugify(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
+/** Derive the sellable unit label from a component yield unit (cupcakes → cupcake). */
+function sellableUnitFromComponent(yieldUnit: string): string {
+  const u = yieldUnit.trim().toLowerCase();
+  if (!u) return "batch";
+  if (u === "cupcakes") return "cupcake";
+  if (u === "cookies") return "cookie";
+  if (u === "cakes" || u === "cake") return "cake";
+  if (u === "batch" || u === "cake batch") return "batch";
+  if (u.endsWith("s") && u.length > 3) return u.slice(0, -1);
+  return yieldUnit.trim();
+}
+
 export function ItemBuilderPage() {
   const { data, repo, refresh } = useApp();
   const navigate = useNavigate();
@@ -135,6 +147,16 @@ export function ItemBuilderPage() {
         refs.push({ componentId: compId, scale: 1, sort: i });
       }
 
+      // Sellable unit comes from the first component's yield (component holds real batch yield).
+      const primary = usable[0];
+      let sellableUnit = "batch";
+      if (primary.mode === "existing" && primary.existingId) {
+        const existing = data!.components.find((c) => c.id === primary.existingId);
+        if (existing) sellableUnit = sellableUnitFromComponent(existing.yieldUnit);
+      } else {
+        sellableUnit = sellableUnitFromComponent(primary.yieldUnit);
+      }
+
       await repo.upsertMenuItem({
         id: itemId,
         name: itemName.trim(),
@@ -144,7 +166,7 @@ export function ItemBuilderPage() {
         publishToSite: false,
         assemblyNotes: assemblyNotes.trim() || null,
         yieldAmount: 1,
-        yieldUnit: "batch",
+        yieldUnit: sellableUnit,
         laborHours: null,
         marginPct: null,
         discountPct: null,

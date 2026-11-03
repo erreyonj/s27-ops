@@ -103,9 +103,17 @@ interface MenuItemOut {
 function menuItemYield(name: string, fromCakeBuilder: boolean): { amount: number; unit: string } {
   if (fromCakeBuilder) return { amount: 1, unit: "cake" };
   if (/Cupcake/i.test(name)) return { amount: 1, unit: "cupcake" };
-  if (/Cinnamon Roll/i.test(name)) return { amount: 1, unit: "batch" };
+  if (/Cinnamon Roll/i.test(name)) return { amount: 1, unit: "roll" };
+  if (/Sugar Cookie Bars/i.test(name)) return { amount: 1, unit: "bar" };
+  if (/Rice Crispy/i.test(name)) return { amount: 1, unit: "treat" };
+  if (
+    /^(BB CC Cookies|CC Cookie|Double CC PB Cookies|OF PB Cookies)$/i.test(name.trim())
+  ) {
+    return { amount: 1, unit: "cookie" };
+  }
+  if (/Banana Bread|Pound Cake/i.test(name)) return { amount: 1, unit: "slice" };
   if (/Cookie|Brownie|Bar|Treat/i.test(name)) return { amount: 1, unit: "batch" };
-  if (/Pie|Pudding|Bread|Pound Cake/i.test(name)) return { amount: 1, unit: "batch" };
+  if (/Pie|Pudding|Bread/i.test(name)) return { amount: 1, unit: "batch" };
   return { amount: 1, unit: "batch" };
 }
 
@@ -160,21 +168,29 @@ function asString(v: unknown): string | null {
   return null;
 }
 
+function isTablespoon(raw: string | null): boolean {
+  if (!raw) return false;
+  const u = raw.trim().toLowerCase();
+  return u === "tbs" || u === "tbsp" || u === "tablespoon" || u === "tablespoons";
+}
+
 function normalizeUnit(raw: string | null): BaseUnit | null {
   if (!raw) return null;
   const u = raw.trim().toLowerCase();
   if (u === "g" || u === "grams" || u === "gram") return "g";
   if (u === "ea" || u === "each" || u === "count") return "count";
   if (u === "tsp" || u === "t" || u === "teaspoon" || u === "teaspoons") return "tsp";
-  if (u === "tbs" || u === "tbsp" || u === "tablespoon" || u === "tablespoons") return "tsp";
+  if (isTablespoon(raw)) return "tsp";
   return null;
 }
 
+/** Approximate grams per tablespoon for dry powders when Materials base is g. */
+const G_PER_TBSP_POWDER = 7.5;
+
 /**
  * Map recipe "# of Units" into the ingredient's Materials base unit.
- * Legacy Excel VLOOKUPs price-per-Materials-unit and multiplies by C (qty)
- * without converting the recipe Unit column — so we do the same. Recipe unit
- * is kept only for qtyText display; mismatches are reported as soft warnings.
+ * Converts tablespoons → teaspoons (×3) or → grams (×7.5 for powders) when
+ * the recipe unit is tbs/tbsp so cost and grocery amounts stay accurate.
  */
 function qtyInBaseUnit(
   qty: number,
@@ -183,13 +199,55 @@ function qtyInBaseUnit(
 ): { grams: number | null; count: number | null; tsp: number | null; warning?: string } {
   const recipeNorm = normalizeUnit(recipeUnitRaw);
   let warning: string | undefined;
-  if (recipeNorm && recipeNorm !== baseUnit) {
+  let amount = qty;
+
+  if (isTablespoon(recipeUnitRaw)) {
+    if (baseUnit === "tsp") {
+      amount = qty * 3;
+      warning = `converted ${qty} tbs → ${amount} tsp`;
+    } else if (baseUnit === "g") {
+      amount = qty * G_PER_TBSP_POWDER;
+      warning = `converted ${qty} tbs → ${amount} g (≈${G_PER_TBSP_POWDER} g/tbsp)`;
+    }
+  } else if (recipeNorm && recipeNorm !== baseUnit) {
     warning = `recipe unit ${recipeUnitRaw} ≠ Materials ${baseUnit}; using qty as ${baseUnit}`;
   }
 
-  if (baseUnit === "g") return { grams: qty, count: null, tsp: null, warning };
-  if (baseUnit === "count") return { grams: null, count: qty, tsp: null, warning };
-  return { grams: null, count: null, tsp: qty, warning };
+  if (baseUnit === "g") return { grams: amount, count: null, tsp: null, warning };
+  if (baseUnit === "count") return { grams: null, count: amount, tsp: null, warning };
+  return { grams: null, count: null, tsp: amount, warning };
+}
+
+/**
+ * Component holds real per-batch yield (sellable units one batch covers).
+ * Cupcakes → 12; Levain cookies → 6; cinnamon rolls → 8; etc.
+ * Frostings/BCs → 1 batch; Cake Builder cakes/fillings → 1 cake.
+ */
+function componentYield(
+  sheetName: string,
+  type: ComponentType,
+  isCakeBuilderComp: boolean
+): { amount: number; unit: string } {
+  if (/Cupcake/i.test(sheetName)) return { amount: 12, unit: "cupcakes" };
+
+  // Levain-style cookies (not sugar cookies / bars)
+  if (
+    /^(BB CC Cookies|CC Cookie|Double CC PB Cookies|OF PB Cookies)$/i.test(
+      sheetName.trim()
+    )
+  ) {
+    return { amount: 6, unit: "cookies" };
+  }
+  if (/Cinnamon Rolls/i.test(sheetName)) return { amount: 8, unit: "rolls" };
+  if (/Banana Bread/i.test(sheetName)) return { amount: 8, unit: "slices" };
+  if (/Sugar Cookie Bars/i.test(sheetName)) return { amount: 9, unit: "bars" };
+  if (/Rice Crispy/i.test(sheetName)) return { amount: 12, unit: "treats" };
+  if (/Pound Cake/i.test(sheetName)) return { amount: 16, unit: "slices" };
+
+  if (type === "frosting") return { amount: 1, unit: "batch" };
+  if (isCakeBuilderComp) return { amount: 1, unit: "cake" };
+  if (type === "cake" || type === "filling") return { amount: 1, unit: "cake" };
+  return { amount: 1, unit: "batch" };
 }
 
 function guessCategory(name: string, store: string | null): string {
@@ -442,20 +500,32 @@ async function main() {
     }
 
     const type = classifyType(sheetName, cakeBases, frostings, fillings);
-    // Always import as 1 batch; set real yields in Library. Pricer then shows
-    // batch × margin until per-unit yields are filled in.
-    const yieldAmount = 1;
-    let yieldUnit = "batch";
-    if (
+    const isCakeBuilderComp =
       cakeComponentNames.has(sheetName.trim()) ||
       cakeBases.has(sheetName.trim()) ||
       frostings.has(sheetName.trim()) ||
-      fillings.has(sheetName.trim())
-    ) {
-      yieldUnit = "cake batch";
-      yieldNotes.push(`${sheetName}: yield 1 cake batch (Cake Builder component)`);
-    } else {
-      yieldNotes.push(`${sheetName}: yield 1 batch (default)`);
+      fillings.has(sheetName.trim());
+    const { amount: yieldAmount, unit: yieldUnit } = componentYield(
+      sheetName,
+      type,
+      isCakeBuilderComp
+    );
+    yieldNotes.push(`${sheetName}: yield ${yieldAmount} ${yieldUnit}`);
+
+    // Legacy Excel often listed baking powder as a second "baking soda" row.
+    for (let i = 1; i < lines.length; i++) {
+      const prev = lines[i - 1];
+      const cur = lines[i];
+      if (
+        cur.ingredientId === "baking-soda" &&
+        prev.ingredientId === "baking-soda" &&
+        cur.tsp === prev.tsp
+      ) {
+        cur.ingredientId = "baking-powder";
+        unitWarnings.push(
+          `${sheetName}: remapped duplicate baking-soda → baking-powder`
+        );
+      }
     }
 
     const excelBatchCost = asNumber(cellVal(ws.getRow(9).getCell(9)));

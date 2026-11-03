@@ -52,8 +52,9 @@ function SetupPrompt() {
         <p className="error-text" style={{ marginTop: 10 }}>
           {err} — make sure you ran <code>supabase/schema.sql</code> (and{" "}
           <code>supabase/migration_tsp.sql</code> /{" "}
-          <code>supabase/migration_pricing.sql</code> on existing projects) in the SQL
-          editor first.
+          <code>supabase/migration_pricing.sql</code> /{" "}
+          <code>supabase/migration_yield_and_qty_fixes.sql</code> on existing projects)
+          in the SQL editor first.
         </p>
       )}
     </div>
@@ -73,14 +74,14 @@ function SignOutButton() {
 }
 
 function Shell() {
-  const { data, loading, error } = useApp();
+  const { data, loading, error, repo } = useApp();
   const needsSetup = Boolean(supabaseConfigured && data && data.ingredients.length === 0);
 
   return (
     <>
-      {!supabaseConfigured && (
+      {repo.isDemo && (
         <div className="demo-banner no-print">
-          Demo mode — changes are not saved to the cloud. Fill in .env with your
+          Demo mode — changes won&apos;t be saved. Fill in .env with your
           Supabase keys (see README) to go live.
         </div>
       )}

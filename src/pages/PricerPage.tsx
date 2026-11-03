@@ -36,6 +36,7 @@ export function PricerPage() {
   const [settingsDraft, setSettingsDraft] = useState<BakerySettings>(data!.settings);
   const [savingDefaults, setSavingDefaults] = useState(false);
   const [committing, setCommitting] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [showIngredientPeek, setShowIngredientPeek] = useState(false);
 
   const ingById = useMemo(
@@ -113,6 +114,17 @@ export function PricerPage() {
       await refresh();
     } finally {
       setCommitting(false);
+    }
+  }
+
+  async function setPublishToSite(publishToSite: boolean) {
+    if (!selected || selected.publishToSite === publishToSite) return;
+    setPublishing(true);
+    try {
+      await repo.upsertMenuItem({ ...selected, publishToSite });
+      await refresh();
+    } finally {
+      setPublishing(false);
     }
   }
 
@@ -486,6 +498,27 @@ export function PricerPage() {
                 <button className="btn ghost" disabled={!itemDirty} onClick={resetDraft}>
                   Reset draft
                 </button>
+              </div>
+
+              <div
+                className="check-row"
+                style={{
+                  marginTop: 14,
+                  borderBottom: "none",
+                  opacity: selected.isPlaceholder ? 0.5 : 1,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  id={`pricer-publish-${selected.id}`}
+                  checked={selected.publishToSite}
+                  disabled={selected.isPlaceholder || publishing}
+                  onChange={(e) => void setPublishToSite(e.target.checked)}
+                />
+                <label htmlFor={`pricer-publish-${selected.id}`}>
+                  Publish to site
+                  {publishing ? "…" : selected.publishToSite ? " (on farmers market page)" : ""}
+                </label>
               </div>
             </>
           )}
