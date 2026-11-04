@@ -8,8 +8,8 @@ import type {
 } from "./types";
 
 /** Batches of each component needed to produce the current menu.
-    Demand accumulates fractionally across menu items sharing a component
-    (e.g. one buttercream covers several flavors), then rounds up once. */
+    Menu quantity is how many batches to make; demand accumulates across
+    menu items sharing a component, then rounds up once. */
 export function componentBatches(data: AppData): Map<string, number> {
   const demand = new Map<string, number>();
   const itemById = new Map(data.menuItems.map((m) => [m.id, m]));
@@ -21,8 +21,8 @@ export function componentBatches(data: AppData): Map<string, number> {
     if (!item) continue;
     for (const ref of item.components) {
       const comp = compById.get(ref.componentId);
-      if (!comp || comp.yieldAmount <= 0) continue;
-      const batches = (entry.quantity / comp.yieldAmount) * ref.scale;
+      if (!comp) continue;
+      const batches = entry.quantity * ref.scale;
       demand.set(ref.componentId, (demand.get(ref.componentId) ?? 0) + batches);
     }
   }
@@ -187,8 +187,9 @@ export function componentCost(
 
 export interface MenuItemCost {
   item: MenuItem;
-  perUnit: number;
-  parts: Array<{ name: string; perUnit: number }>;
+  /** Material cost for one menu-item batch (sum of linked component batch costs). */
+  batchCost: number;
+  parts: Array<{ name: string; batchCost: number }>;
   missing: string[];
 }
 
@@ -197,19 +198,19 @@ export function menuItemCost(
   compById: Map<string, ItemComponent>,
   ingById: Map<string, RawIngredient>
 ): MenuItemCost {
-  let perUnit = 0;
-  const parts: Array<{ name: string; perUnit: number }> = [];
+  let batchCost = 0;
+  const parts: Array<{ name: string; batchCost: number }> = [];
   const missing: string[] = [];
   for (const ref of item.components) {
     const comp = compById.get(ref.componentId);
     if (!comp) continue;
     const cost = componentCost(comp, ingById);
-    const part = cost.perServing * ref.scale;
-    perUnit += part;
-    parts.push({ name: comp.name, perUnit: part });
+    const part = cost.batchCost * ref.scale;
+    batchCost += part;
+    parts.push({ name: comp.name, batchCost: part });
     missing.push(...cost.missing);
   }
-  return { item, perUnit, parts, missing: [...new Set(missing)] };
+  return { item, batchCost, parts, missing: [...new Set(missing)] };
 }
 
 /** Draft overrides for the live calculator (session UI until Commit). */
@@ -222,7 +223,7 @@ export interface QuoteDraft {
 export interface MenuItemQuote {
   item: MenuItem;
   materials: number;
-  materialsParts: Array<{ name: string; perUnit: number }>;
+  materialsParts: Array<{ name: string; batchCost: number }>;
   missingIngredients: string[];
   laborHours: number | null;
   laborHoursMissing: boolean;
@@ -239,12 +240,13 @@ export interface MenuItemQuote {
   taxPct: number;
   taxAmount: number;
   suggestedRetail: number;
+  yieldAmount: number;
   displayUnit: string;
   warnings: string[];
 }
 
 /**
- * Excel Cake Builder–style quote:
+ * Excel Cake Builder–style quote for one batch:
  * materials + labor → / (1 - margin) → × (1 - discount) → × (1 + tax)
  */
 export function quoteMenuItem(
@@ -256,7 +258,7 @@ export function quoteMenuItem(
 ): MenuItemQuote {
   const mats = menuItemCost(item, compById, ingById);
   const yieldAmt = item.yieldAmount > 0 ? item.yieldAmount : 1;
-  const materials = mats.perUnit / yieldAmt;
+  const materials = mats.batchCost;
 
   const laborHours = draft ? draft.laborHours : item.laborHours;
   const laborHoursMissing = laborHours == null;
@@ -313,13 +315,6 @@ export function quoteMenuItem(
   }
 
   const displayUnit = (item.yieldUnit || "batch").trim() || "batch";
-  // Plural sellable unit with yieldAmount 1 usually means the label is wrong
-  // (e.g. "/cupcakes" on a single-unit price).
-  if (yieldAmt === 1 && /s$/i.test(displayUnit) && !/^batch$/i.test(displayUnit)) {
-    warnings.push(
-      `Yield unit is plural ("${displayUnit}") but yield amount is 1 — check label vs per-unit price`
-    );
-  }
 
   const unitMismatches: string[] = [];
   for (const ref of item.components) {
@@ -349,7 +344,7 @@ export function quoteMenuItem(
     materials,
     materialsParts: mats.parts.map((p) => ({
       name: p.name,
-      perUnit: p.perUnit / yieldAmt,
+      batchCost: p.batchCost,
     })),
     missingIngredients: mats.missing,
     laborHours,
@@ -367,12 +362,19 @@ export function quoteMenuItem(
     taxPct,
     taxAmount,
     suggestedRetail,
+    yieldAmount: yieldAmt,
     displayUnit,
     warnings,
   };
 }
 
-export function formatRetailPerUnit(amount: number, yieldUnit: string): string {
+/** Retail label for one batch, e.g. "$7.80 for 6 cookies". */
+export function formatRetailForBatch(
+  amount: number,
+  yieldAmount: number,
+  yieldUnit: string
+): string {
   const unit = yieldUnit.trim() || "batch";
-  return `$${amount.toFixed(2)}/${unit}`;
+  const n = yieldAmount > 0 ? yieldAmount : 1;
+  return `$${amount.toFixed(2)} for ${n} ${unit}`;
 }

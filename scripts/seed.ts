@@ -67,7 +67,7 @@ async function run() {
     const { error } = await sb.from("item_components").upsert({
       id: c.id,
       name: c.name,
-      type: c.type,
+      category: c.category,
       yield_amount: c.yieldAmount,
       yield_unit: c.yieldUnit,
       notes: c.notes,
@@ -100,6 +100,7 @@ async function run() {
       is_placeholder: m.isPlaceholder,
       publish_to_site: m.publishToSite,
       assembly_notes: m.assemblyNotes,
+      category: m.category,
       yield_amount: m.yieldAmount,
       yield_unit: m.yieldUnit,
       labor_hours: m.laborHours,

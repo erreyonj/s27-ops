@@ -46,7 +46,19 @@ const NAME_ALIASES: Record<string, string> = {
 };
 
 type BaseUnit = "g" | "count" | "tsp";
-type ComponentType = "cake" | "frosting" | "filling" | "topping" | "dough" | "other";
+type Category =
+  | "cake"
+  | "frosting"
+  | "pie"
+  | "dough"
+  | "loaf"
+  | "filling"
+  | "topping"
+  | "pudding"
+  | "other"
+  | "bars";
+
+const SECONDARY_CATEGORIES = new Set<Category>(["frosting", "filling", "topping"]);
 
 interface IngredientOut {
   id: string;
@@ -75,7 +87,7 @@ interface LineOut {
 interface ComponentOut {
   id: string;
   name: string;
-  type: ComponentType;
+  category: Category;
   yieldAmount: number;
   yieldUnit: string;
   notes: string | null;
@@ -92,6 +104,7 @@ interface MenuItemOut {
   isPlaceholder: boolean;
   publishToSite: boolean;
   assemblyNotes: string | null;
+  category: Category;
   yieldAmount: number;
   yieldUnit: string;
   laborHours: number | null;
@@ -100,21 +113,18 @@ interface MenuItemOut {
   components: Array<{ componentId: string; scale: number; sort: number }>;
 }
 
-function menuItemYield(name: string, fromCakeBuilder: boolean): { amount: number; unit: string } {
-  if (fromCakeBuilder) return { amount: 1, unit: "cake" };
-  if (/Cupcake/i.test(name)) return { amount: 1, unit: "cupcake" };
-  if (/Cinnamon Roll/i.test(name)) return { amount: 1, unit: "roll" };
-  if (/Sugar Cookie Bars/i.test(name)) return { amount: 1, unit: "bar" };
-  if (/Rice Crispy/i.test(name)) return { amount: 1, unit: "treat" };
-  if (
-    /^(BB CC Cookies|CC Cookie|Double CC PB Cookies|OF PB Cookies)$/i.test(name.trim())
-  ) {
-    return { amount: 1, unit: "cookie" };
-  }
-  if (/Banana Bread|Pound Cake/i.test(name)) return { amount: 1, unit: "slice" };
-  if (/Cookie|Brownie|Bar|Treat/i.test(name)) return { amount: 1, unit: "batch" };
-  if (/Pie|Pudding|Bread/i.test(name)) return { amount: 1, unit: "batch" };
-  return { amount: 1, unit: "batch" };
+/** Pick product component (skip frosting/filling/topping when another exists). */
+function productComponent(
+  refs: MenuItemOut["components"],
+  byId: Map<string, ComponentOut>
+): ComponentOut | null {
+  const comps = refs
+    .slice()
+    .sort((a, b) => a.sort - b.sort)
+    .map((r) => byId.get(r.componentId))
+    .filter((c): c is ComponentOut => !!c);
+  if (!comps.length) return null;
+  return comps.find((c) => !SECONDARY_CATEGORIES.has(c.category)) ?? comps[0];
 }
 
 function slugify(s: string): string {
@@ -225,7 +235,7 @@ function qtyInBaseUnit(
  */
 function componentYield(
   sheetName: string,
-  type: ComponentType,
+  category: Category,
   isCakeBuilderComp: boolean
 ): { amount: number; unit: string } {
   if (/Cupcake/i.test(sheetName)) return { amount: 12, unit: "cupcakes" };
@@ -244,9 +254,9 @@ function componentYield(
   if (/Rice Crispy/i.test(sheetName)) return { amount: 12, unit: "treats" };
   if (/Pound Cake/i.test(sheetName)) return { amount: 16, unit: "slices" };
 
-  if (type === "frosting") return { amount: 1, unit: "batch" };
+  if (category === "frosting") return { amount: 1, unit: "batch" };
   if (isCakeBuilderComp) return { amount: 1, unit: "cake" };
-  if (type === "cake" || type === "filling") return { amount: 1, unit: "cake" };
+  if (category === "cake" || category === "filling") return { amount: 1, unit: "cake" };
   return { amount: 1, unit: "batch" };
 }
 
@@ -269,12 +279,12 @@ function guessCategory(name: string, store: string | null): string {
   return "other";
 }
 
-function classifyType(
+function classifyCategory(
   sheetName: string,
   cakeBases: Set<string>,
   frostings: Set<string>,
   fillings: Set<string>
-): ComponentType {
+): Category {
   const n = sheetName.trim();
   if (cakeBases.has(n)) return "cake";
   if (frostings.has(n)) return "frosting";
@@ -286,7 +296,11 @@ function classifyType(
     return "frosting";
   if (/Filling|Curd|Sauce/i.test(n)) return "filling";
   if (/Cupcake|Cake\b/i.test(n)) return "cake";
-  if (/Dough|Cookie|Roll|Bread/i.test(n)) return "dough";
+  if (/Pie\b/i.test(n)) return "pie";
+  if (/Pudding/i.test(n)) return "pudding";
+  if (/Bars?\b/i.test(n)) return "bars";
+  if (/Loaf|Bread/i.test(n)) return "loaf";
+  if (/Dough|Cookie|Roll/i.test(n)) return "dough";
   return "other";
 }
 
@@ -499,7 +513,7 @@ async function main() {
       });
     }
 
-    const type = classifyType(sheetName, cakeBases, frostings, fillings);
+    const category = classifyCategory(sheetName, cakeBases, frostings, fillings);
     const isCakeBuilderComp =
       cakeComponentNames.has(sheetName.trim()) ||
       cakeBases.has(sheetName.trim()) ||
@@ -507,7 +521,7 @@ async function main() {
       fillings.has(sheetName.trim());
     const { amount: yieldAmount, unit: yieldUnit } = componentYield(
       sheetName,
-      type,
+      category,
       isCakeBuilderComp
     );
     yieldNotes.push(`${sheetName}: yield ${yieldAmount} ${yieldUnit}`);
@@ -535,7 +549,7 @@ async function main() {
     components.push({
       id,
       name: displayName,
-      type,
+      category,
       yieldAmount,
       yieldUnit,
       notes:
@@ -563,6 +577,7 @@ async function main() {
 
   const menuItems: MenuItemOut[] = [];
   const missingComboParts: string[] = [];
+  const compById = new Map(components.map((c) => [c.id, c]));
 
   for (const combo of combos) {
     const refs: MenuItemOut["components"] = [];
@@ -582,7 +597,7 @@ async function main() {
       }
       refs.push({ componentId: cid, scale: 1, sort: sort++ });
     }
-    const yieldInfo = menuItemYield(combo.name, true);
+    const product = productComponent(refs, compById);
     menuItems.push({
       id: `mi-${slugify(combo.name)}`,
       name: combo.name,
@@ -593,8 +608,9 @@ async function main() {
       assemblyNotes: [combo.cake, combo.frosting, combo.filling1, combo.filling2]
         .filter((x) => x && x !== "Clear")
         .join(" + "),
-      yieldAmount: yieldInfo.amount,
-      yieldUnit: yieldInfo.unit,
+      category: product?.category ?? "cake",
+      yieldAmount: product?.yieldAmount ?? 1,
+      yieldUnit: product?.yieldUnit ?? "cake",
       laborHours: null,
       marginPct: null,
       discountPct: null,
@@ -606,7 +622,6 @@ async function main() {
     if (!isProductSheet(c.sheetName, cakeComponentNames)) continue;
     if (menuItems.some((m) => m.name === c.name)) continue;
     const isCupcake = /Cupcake/i.test(c.sheetName);
-    const yieldInfo = menuItemYield(c.name, false);
     menuItems.push({
       id: `mi-${slugify(c.name)}`,
       name: c.name,
@@ -615,8 +630,9 @@ async function main() {
       isPlaceholder: false,
       publishToSite: false,
       assemblyNotes: null,
-      yieldAmount: yieldInfo.amount,
-      yieldUnit: yieldInfo.unit,
+      category: c.category,
+      yieldAmount: c.yieldAmount,
+      yieldUnit: c.yieldUnit,
       laborHours: null,
       marginPct: null,
       discountPct: null,
@@ -648,7 +664,7 @@ async function main() {
     linesOut.push(`  {`);
     linesOut.push(`    id: ${tsLiteral(c.id)},`);
     linesOut.push(`    name: ${tsLiteral(c.name)},`);
-    linesOut.push(`    type: ${tsLiteral(c.type)},`);
+    linesOut.push(`    category: ${tsLiteral(c.category)},`);
     linesOut.push(`    yieldAmount: ${c.yieldAmount},`);
     linesOut.push(`    yieldUnit: ${tsLiteral(c.yieldUnit)},`);
     linesOut.push(`    notes: ${tsLiteral(c.notes)},`);
@@ -673,6 +689,7 @@ async function main() {
     linesOut.push(`    isPlaceholder: ${m.isPlaceholder},`);
     linesOut.push(`    publishToSite: ${m.publishToSite},`);
     linesOut.push(`    assemblyNotes: ${tsLiteral(m.assemblyNotes)},`);
+    linesOut.push(`    category: ${tsLiteral(m.category)},`);
     linesOut.push(`    yieldAmount: ${m.yieldAmount},`);
     linesOut.push(`    yieldUnit: ${tsLiteral(m.yieldUnit)},`);
     linesOut.push(`    laborHours: ${tsLiteral(m.laborHours)},`);

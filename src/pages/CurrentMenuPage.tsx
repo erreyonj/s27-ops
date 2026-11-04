@@ -51,7 +51,7 @@ export function CurrentMenuPage() {
               <thead>
                 <tr>
                   <th>Item</th>
-                  <th className="num">Quantity</th>
+                  <th className="num">Batches</th>
                   <th className="num no-print">Remove</th>
                 </tr>
               </thead>
@@ -62,6 +62,12 @@ export function CurrentMenuPage() {
                     <tr key={e.menuItemId}>
                       <td>
                         <strong>{item?.name ?? e.menuItemId}</strong>
+                        {item && (
+                          <span className="muted">
+                            {" "}
+                            · 1 batch → {item.yieldAmount} {item.yieldUnit}
+                          </span>
+                        )}
                         {item?.isPlaceholder && (
                           <>
                             {" "}
@@ -89,7 +95,7 @@ export function CurrentMenuPage() {
               </tbody>
             </table>
             <p className="note-inline" style={{ marginTop: 10 }}>
-              {totalUnits} total units this week.
+              {totalUnits} total batch{totalUnits === 1 ? "" : "es"} this week.
             </p>
           </div>
 

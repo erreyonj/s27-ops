@@ -2,7 +2,13 @@ import { useMemo, useState, type DragEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useApp } from "../state/AppState";
 import { scaleQtyText } from "../domain/scaling";
-import type { ComponentLine, ComponentType } from "../domain/types";
+import {
+  CATEGORIES,
+  SECONDARY_CATEGORIES,
+  type Category,
+  type ComponentLine,
+  type ItemComponent,
+} from "../domain/types";
 
 let blockSeq = 0;
 
@@ -11,7 +17,7 @@ interface BlockState {
   mode: "existing" | "new";
   existingId: string | null;
   name: string;
-  type: ComponentType;
+  category: Category;
   yieldAmount: number;
   yieldUnit: string;
   notes: string;
@@ -24,7 +30,7 @@ function newBlock(): BlockState {
     mode: "new",
     existingId: null,
     name: "",
-    type: "cake",
+    category: "cake",
     yieldAmount: 12,
     yieldUnit: "cupcakes",
     notes: "",
@@ -36,16 +42,28 @@ function slugify(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
-/** Derive the sellable unit label from a component yield unit (cupcakes → cupcake). */
-function sellableUnitFromComponent(yieldUnit: string): string {
-  const u = yieldUnit.trim().toLowerCase();
-  if (!u) return "batch";
-  if (u === "cupcakes") return "cupcake";
-  if (u === "cookies") return "cookie";
-  if (u === "cakes" || u === "cake") return "cake";
-  if (u === "batch" || u === "cake batch") return "batch";
-  if (u.endsWith("s") && u.length > 3) return u.slice(0, -1);
-  return yieldUnit.trim();
+/** Product component for yield/category: skip frosting/filling/topping when another exists. */
+function productFromBlocks(
+  usable: BlockState[],
+  existingById: Map<string, ItemComponent>
+): { category: Category; yieldAmount: number; yieldUnit: string } {
+  const resolved = usable.map((b) => {
+    if (b.mode === "existing" && b.existingId) {
+      const c = existingById.get(b.existingId);
+      return c
+        ? { category: c.category, yieldAmount: c.yieldAmount, yieldUnit: c.yieldUnit }
+        : null;
+    }
+    return {
+      category: b.category,
+      yieldAmount: b.yieldAmount,
+      yieldUnit: b.yieldUnit,
+    };
+  }).filter((x): x is NonNullable<typeof x> => !!x);
+
+  const product =
+    resolved.find((c) => !SECONDARY_CATEGORIES.has(c.category)) ?? resolved[0];
+  return product ?? { category: "other", yieldAmount: 1, yieldUnit: "batch" };
 }
 
 export function ItemBuilderPage() {
@@ -60,7 +78,7 @@ export function ItemBuilderPage() {
   const [activeKey, setActiveKey] = useState<number | null>(blocks[0]?.key ?? null);
   const [dragOverKey, setDragOverKey] = useState<number | null>(null);
   const [scale, setScale] = useState(1);
-  const [addQty, setAddQty] = useState(24);
+  const [addQty, setAddQty] = useState(1);
   const [addToMenu, setAddToMenu] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -138,7 +156,7 @@ export function ItemBuilderPage() {
         await repo.upsertComponent({
           id: compId,
           name: b.name.trim(),
-          type: b.type,
+          category: b.category,
           yieldAmount: b.yieldAmount,
           yieldUnit: b.yieldUnit,
           notes: b.notes.trim() || null,
@@ -147,15 +165,8 @@ export function ItemBuilderPage() {
         refs.push({ componentId: compId, scale: 1, sort: i });
       }
 
-      // Sellable unit comes from the first component's yield (component holds real batch yield).
-      const primary = usable[0];
-      let sellableUnit = "batch";
-      if (primary.mode === "existing" && primary.existingId) {
-        const existing = data!.components.find((c) => c.id === primary.existingId);
-        if (existing) sellableUnit = sellableUnitFromComponent(existing.yieldUnit);
-      } else {
-        sellableUnit = sellableUnitFromComponent(primary.yieldUnit);
-      }
+      const existingById = new Map(data!.components.map((c) => [c.id, c]));
+      const product = productFromBlocks(usable, existingById);
 
       await repo.upsertMenuItem({
         id: itemId,
@@ -165,8 +176,9 @@ export function ItemBuilderPage() {
         isPlaceholder: false,
         publishToSite: false,
         assemblyNotes: assemblyNotes.trim() || null,
-        yieldAmount: 1,
-        yieldUnit: sellableUnit,
+        category: product.category,
+        yieldAmount: product.yieldAmount,
+        yieldUnit: product.yieldUnit,
         laborHours: null,
         marginPct: null,
         discountPct: null,
@@ -334,14 +346,14 @@ export function ItemBuilderPage() {
                       />
                     </label>
                     <label>
-                      Type
+                      Category
                       <select
-                        value={b.type}
+                        value={b.category}
                         onChange={(e) =>
-                          updateBlock(b.key, { type: e.target.value as ComponentType })
+                          updateBlock(b.key, { category: e.target.value as Category })
                         }
                       >
-                        {["cake", "frosting", "filling", "topping", "dough", "other"].map((t) => (
+                        {CATEGORIES.map((t) => (
                           <option key={t} value={t}>
                             {t}
                           </option>
@@ -458,7 +470,7 @@ export function ItemBuilderPage() {
               </label>
               {addToMenu && (
                 <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  Quantity
+                  Batches
                   <input
                     type="number"
                     min={1}

@@ -1,6 +1,15 @@
 -- S27 Bakery Ops schema
 -- Run this in the Supabase SQL Editor (or `supabase db push`) on a fresh project.
 
+-- Recipe/menu category (distinct from raw_ingredients.category text).
+do $$ begin
+  create type public.category as enum (
+    'cake', 'frosting', 'pie', 'dough', 'loaf',
+    'filling', 'topping', 'pudding', 'other', 'bars'
+  );
+exception when duplicate_object then null;
+end $$;
+
 create table if not exists raw_ingredients (
   id text primary key,
   name text not null,
@@ -22,8 +31,8 @@ create table if not exists raw_ingredients (
 create table if not exists item_components (
   id text primary key,
   name text not null,
-  type text not null default 'other', -- cake | frosting | filling | topping | dough | other
-  yield_amount numeric not null default 1, -- servings per batch (e.g. 12 cupcakes, frosts 36)
+  category public.category not null default 'other',
+  yield_amount numeric not null default 1, -- units one batch covers (e.g. 12 cupcakes, 6 cookies)
   yield_unit text not null default 'servings',
   notes text,
   created_at timestamptz not null default now()
@@ -48,7 +57,8 @@ create table if not exists menu_items (
   is_primary boolean not null default false,
   is_placeholder boolean not null default false,
   assembly_notes text,
-  -- Sellable yield of one composed item (Pricer displays retail as $/yield_unit).
+  category public.category not null default 'other',
+  -- Batch yield of one composed item (Pricer displays retail as $ for yield_amount yield_unit).
   yield_amount numeric not null default 1,
   yield_unit text not null default 'batch',
   -- Pricing calculator (nullable hours; null margin/discount = inherit bakery defaults; 0 = zeroed).

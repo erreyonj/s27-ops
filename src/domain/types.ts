@@ -28,19 +28,44 @@ export interface ComponentLine {
   sort: number;
 }
 
-export type ComponentType =
+/** Matches public.category enum in Supabase. */
+export type Category =
   | "cake"
   | "frosting"
+  | "pie"
+  | "dough"
+  | "loaf"
   | "filling"
   | "topping"
-  | "dough"
-  | "other";
+  | "pudding"
+  | "other"
+  | "bars";
+
+export const CATEGORIES: Category[] = [
+  "cake",
+  "frosting",
+  "pie",
+  "dough",
+  "loaf",
+  "filling",
+  "topping",
+  "pudding",
+  "other",
+  "bars",
+];
+
+/** Roles that are never the "product" component for yield/category inheritance. */
+export const SECONDARY_CATEGORIES: ReadonlySet<Category> = new Set([
+  "frosting",
+  "filling",
+  "topping",
+]);
 
 export interface ItemComponent {
   id: string;
   name: string;
-  type: ComponentType;
-  /** Servings one batch covers (12 cupcakes, frosts 36, fills 30...). */
+  category: Category;
+  /** Units one batch covers (12 cupcakes, 6 cookies, frosts 1 cake...). */
   yieldAmount: number;
   yieldUnit: string;
   notes: string | null;
@@ -62,11 +87,12 @@ export interface MenuItem {
   /** When true, name (+ flavor) appears on the public farmers market page. */
   publishToSite: boolean;
   assemblyNotes: string | null;
-  /** How many sellable units one composed item represents (usually 1). */
+  category: Category;
+  /** Units one batch of this menu item yields (matches product component). */
   yieldAmount: number;
-  /** Display unit for retail, e.g. cake | cupcake | batch. */
+  /** Display unit for the batch, e.g. cookies | cake | cupcakes. */
   yieldUnit: string;
-  /** Labor hours for one yield unit; null = not set (warn, treat as $0). */
+  /** Labor hours for one batch; null = not set (warn, treat as $0). */
   laborHours: number | null;
   /** null = inherit bakery default; 0 = intentionally zeroed. */
   marginPct: number | null;

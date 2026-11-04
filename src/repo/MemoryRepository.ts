@@ -32,6 +32,7 @@ interface DemoState {
 function normalizeMenuItem(m: MenuItem): MenuItem {
   return {
     ...m,
+    category: m.category ?? "other",
     yieldAmount: m.yieldAmount ?? 1,
     yieldUnit: m.yieldUnit ?? "batch",
     laborHours: m.laborHours ?? null,

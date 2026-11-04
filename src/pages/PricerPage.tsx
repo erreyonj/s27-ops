@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useApp } from "../state/AppState";
 import {
-  formatRetailPerUnit,
+  formatRetailForBatch,
   menuItemCost,
   quoteMenuItem,
   type QuoteDraft,
@@ -282,7 +282,12 @@ export function PricerPage() {
                   >
                     <strong>{m.name}</strong>
                     <div className="note-inline">
-                      materials {money(mats.perUnit / (m.yieldAmount || 1))}/{m.yieldUnit}
+                      materials{" "}
+                      {formatRetailForBatch(
+                        mats.batchCost,
+                        m.yieldAmount || 1,
+                        m.yieldUnit
+                      )}
                       {mats.missing.length ? " · missing prices" : ""}
                     </div>
                   </button>
@@ -306,12 +311,15 @@ export function PricerPage() {
               <h4>Materials</h4>
               <p style={{ margin: "4px 0" }}>
                 <strong>{money(quote.materials)}</strong>
-                <span className="muted"> / {quote.displayUnit}</span>
+                <span className="muted">
+                  {" "}
+                  for {quote.yieldAmount} {quote.displayUnit}
+                </span>
               </p>
               <ul style={{ listStyle: "none", padding: 0, margin: "0 0 12px" }}>
                 {quote.materialsParts.map((p) => (
                   <li key={p.name} className="note-inline">
-                    {p.name}: {money(p.perUnit)}
+                    {p.name}: {money(p.batchCost)}
                   </li>
                 ))}
               </ul>
@@ -472,7 +480,11 @@ export function PricerPage() {
                     </td>
                     <td className="num">
                       <strong>
-                        {formatRetailPerUnit(quote.suggestedRetail, quote.displayUnit)}
+                        {formatRetailForBatch(
+                          quote.suggestedRetail,
+                          quote.yieldAmount,
+                          quote.displayUnit
+                        )}
                       </strong>
                     </td>
                   </tr>
