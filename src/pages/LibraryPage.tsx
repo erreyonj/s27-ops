@@ -60,6 +60,7 @@ export function LibraryPage() {
       if (
         q &&
         !m.name.toLowerCase().includes(q) &&
+        !m.brandName.toLowerCase().includes(q) &&
         !(m.flavorTag ?? "").toLowerCase().includes(q)
       ) {
         return false;
@@ -317,6 +318,11 @@ export function LibraryPage() {
                   {m.isPlaceholder && <span className="pill warn">placeholder</span>}
                   {m.publishToSite && <span className="pill rose">on site</span>}
                 </div>
+                {m.brandName !== m.name && (
+                  <p className="note-inline" style={{ margin: "4px 0 0" }}>
+                    Brand: {m.brandName}
+                  </p>
+                )}
                 <p className="note-inline" style={{ margin: "6px 0 0" }}>
                   1 batch → {m.yieldAmount} {m.yieldUnit}
                 </p>

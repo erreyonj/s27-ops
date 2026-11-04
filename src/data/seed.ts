@@ -1472,6 +1472,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-alina",
     name: "Alina",
+    brandName: "The Alina",
     flavorTag: "alina",
     isPrimary: false,
     isPlaceholder: false,
@@ -1492,6 +1493,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-phoenix",
     name: "Phoenix",
+    brandName: "The Phoenix",
     flavorTag: "phoenix",
     isPrimary: false,
     isPlaceholder: false,
@@ -1512,6 +1514,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-shiloh",
     name: "Shiloh",
+    brandName: "The Shiloh",
     flavorTag: "shiloh",
     isPrimary: false,
     isPlaceholder: false,
@@ -1532,6 +1535,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-nyla",
     name: "Nyla",
+    brandName: "The Nyla",
     flavorTag: "nyla",
     isPrimary: false,
     isPlaceholder: false,
@@ -1552,6 +1556,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-qwantese",
     name: "Qwantese",
+    brandName: "The Qwantese",
     flavorTag: "qwantese",
     isPrimary: false,
     isPlaceholder: false,
@@ -1573,6 +1578,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-kiana",
     name: "Kiana",
+    brandName: "The Kiana",
     flavorTag: "kiana",
     isPrimary: false,
     isPlaceholder: false,
@@ -1593,6 +1599,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-danielle",
     name: "Danielle",
+    brandName: "The Danielle",
     flavorTag: "danielle",
     isPrimary: false,
     isPlaceholder: false,
@@ -1613,6 +1620,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-bria",
     name: "Bria",
+    brandName: "The Bria",
     flavorTag: "bria",
     isPrimary: false,
     isPlaceholder: false,
@@ -1632,6 +1640,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-jamie",
     name: "Jamie",
+    brandName: "The Jamie",
     flavorTag: "jamie",
     isPrimary: false,
     isPlaceholder: false,
@@ -1651,6 +1660,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-tierra",
     name: "Tierra",
+    brandName: "The Tierra",
     flavorTag: "tierra",
     isPrimary: false,
     isPlaceholder: false,
@@ -1672,6 +1682,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-kevi",
     name: "Kevi",
+    brandName: "The Kevi",
     flavorTag: "kevi",
     isPrimary: false,
     isPlaceholder: false,
@@ -1692,6 +1703,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-tai",
     name: "Tai",
+    brandName: "The Tai",
     flavorTag: "tai",
     isPrimary: false,
     isPlaceholder: false,
@@ -1712,6 +1724,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-daneen",
     name: "Daneen",
+    brandName: "The Daneen",
     flavorTag: "daneen",
     isPrimary: false,
     isPlaceholder: false,
@@ -1732,6 +1745,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-laura-lee",
     name: "Laura-Lee",
+    brandName: "The Laura-Lee",
     flavorTag: "laura-lee",
     isPrimary: false,
     isPlaceholder: false,
@@ -1752,6 +1766,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-sade",
     name: "Sade",
+    brandName: "The Sade",
     flavorTag: "sade",
     isPrimary: false,
     isPlaceholder: false,
@@ -1772,6 +1787,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-the-unshakable",
     name: "The Unshakable",
+    brandName: "The Unshakable",
     flavorTag: "the-unshakable",
     isPrimary: false,
     isPlaceholder: false,
@@ -1792,6 +1808,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-carrot-cake-cupcakes",
     name: "Carrot Cake Cupcakes",
+    brandName: "Carrot Cake Cupcakes",
     flavorTag: "carrot-cake-cupcakes",
     isPrimary: true,
     isPlaceholder: false,
@@ -1810,6 +1827,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-chocolate-cupcakes",
     name: "Chocolate Cupcakes",
+    brandName: "Chocolate Cupcakes",
     flavorTag: "chocolate-cupcakes",
     isPrimary: true,
     isPlaceholder: false,
@@ -1828,6 +1846,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-vanilla-cupcake",
     name: "Vanilla Cupcake",
+    brandName: "Vanilla Cupcake",
     flavorTag: "vanilla-cupcake",
     isPrimary: true,
     isPlaceholder: false,
@@ -1846,6 +1865,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-of-pb-cookies",
     name: "OF PB Cookies",
+    brandName: "Oat Flour Peanut Butter Cookies",
     flavorTag: "of-pb-cookies",
     isPrimary: false,
     isPlaceholder: false,
@@ -1864,6 +1884,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-cinnamon-rolls",
     name: "Cinnamon Rolls",
+    brandName: "Cinnamon Rolls",
     flavorTag: "cinnamon-rolls",
     isPrimary: false,
     isPlaceholder: false,
@@ -1882,6 +1903,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-cinnamon-rolls-w-ccbc",
     name: "Cinnamon Rolls w CCBC",
+    brandName: "Cinnamon Rolls with Cream Cheese Buttercream",
     flavorTag: "cinnamon-rolls-w-ccbc",
     isPrimary: false,
     isPlaceholder: false,
@@ -1900,6 +1922,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-cinnamon-rolls-w-bbccbc",
     name: "Cinnamon Rolls w BBCCBC",
+    brandName: "Cinnamon Rolls with Brown Butter Cream Cheese Buttercream",
     flavorTag: "cinnamon-rolls-w-bbccbc",
     isPrimary: false,
     isPlaceholder: false,
@@ -1918,6 +1941,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-choc-pb-cup-pie",
     name: "Choc PB Cup Pie",
+    brandName: "Chocolate Peanut Butter Cup Pie",
     flavorTag: "choc-pb-cup-pie",
     isPrimary: false,
     isPlaceholder: false,
@@ -1936,6 +1960,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-oreo-french-silk-pie",
     name: "Oreo French Silk Pie",
+    brandName: "Oreo French Silk Pie",
     flavorTag: "oreo-french-silk-pie",
     isPrimary: false,
     isPlaceholder: false,
@@ -1954,6 +1979,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-biscoff-cookie-butter-pie",
     name: "Biscoff Cookie Butter Pie",
+    brandName: "Biscoff Cookie Butter Pie",
     flavorTag: "biscoff-cookie-butter-pie",
     isPrimary: false,
     isPlaceholder: false,
@@ -1972,6 +1998,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-key-lime-cookie-pie",
     name: "Key Lime Cookie Pie",
+    brandName: "Key Lime Cookie Pie",
     flavorTag: "key-lime-cookie-pie",
     isPrimary: false,
     isPlaceholder: false,
@@ -1990,6 +2017,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-bb-banana-pudding",
     name: "BB Banana Pudding",
+    brandName: "Brown Butter Banana Pudding",
     flavorTag: "bb-banana-pudding",
     isPrimary: false,
     isPlaceholder: false,
@@ -2008,6 +2036,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-biscoff-bb-banana-pudding",
     name: "Biscoff BB Banana Pudding",
+    brandName: "Biscoff Brown Butter Banana Pudding",
     flavorTag: "biscoff-bb-banana-pudding",
     isPrimary: false,
     isPlaceholder: false,
@@ -2026,6 +2055,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-of-banana-bread",
     name: "OF Banana Bread",
+    brandName: "Oat Flour Banana Bread",
     flavorTag: "of-banana-bread",
     isPrimary: false,
     isPlaceholder: false,
@@ -2044,6 +2074,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-sugar-cookie-bars",
     name: "Sugar Cookie Bars",
+    brandName: "Sugar Cookie Bars",
     flavorTag: "sugar-cookie-bars",
     isPrimary: false,
     isPlaceholder: false,
@@ -2062,6 +2093,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-brownies",
     name: "Brownies",
+    brandName: "Brownies",
     flavorTag: "brownies",
     isPrimary: false,
     isPlaceholder: false,
@@ -2080,6 +2112,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-bb-rice-crispy-treats",
     name: "BB Rice Crispy Treats",
+    brandName: "Brown Butter Rice Crispy Treats",
     flavorTag: "bb-rice-crispy-treats",
     isPrimary: false,
     isPlaceholder: false,
@@ -2098,6 +2131,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-pound-cake",
     name: "Pound Cake",
+    brandName: "Pound Cake",
     flavorTag: "pound-cake",
     isPrimary: false,
     isPlaceholder: false,
@@ -2116,6 +2150,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-sugar-cookies",
     name: "Sugar Cookies",
+    brandName: "Sugar Cookies",
     flavorTag: "sugar-cookies",
     isPrimary: false,
     isPlaceholder: false,
@@ -2134,6 +2169,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-double-cc-pb-cookies",
     name: "Double CC PB Cookies",
+    brandName: "Double Chocolate Peanut Butter Cookies",
     flavorTag: "double-cc-pb-cookies",
     isPrimary: false,
     isPlaceholder: false,
@@ -2152,6 +2188,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-cc-cookie",
     name: "CC Cookie",
+    brandName: "Chocolate Chip Cookie",
     flavorTag: "cc-cookie",
     isPrimary: false,
     isPlaceholder: false,
@@ -2170,6 +2207,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-bb-cc-cookies",
     name: "BB CC Cookies",
+    brandName: "Brown Butter Chocolate Chip Cookies",
     flavorTag: "bb-cc-cookies",
     isPrimary: false,
     isPlaceholder: false,
@@ -2188,6 +2226,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-applesauce-spice-cake",
     name: "Applesauce Spice Cake",
+    brandName: "Applesauce Spice Cake",
     flavorTag: "applesauce-spice-cake",
     isPrimary: false,
     isPlaceholder: false,
@@ -2206,6 +2245,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-homemade-marshmallows",
     name: "Homemade Marshmallows",
+    brandName: "Homemade Marshmallows",
     flavorTag: "homemade-marshmallows",
     isPrimary: false,
     isPlaceholder: false,
@@ -2224,6 +2264,7 @@ export const seedMenuItems: MenuItem[] = [
   {
     id: "mi-salted-caramel-apple-cookie",
     name: "Salted Caramel Apple Cookie",
+    brandName: "Salted Caramel Apple Cookie",
     flavorTag: "salted-caramel-apple-cookie",
     isPrimary: false,
     isPlaceholder: false,

@@ -81,10 +81,12 @@ export interface MenuItemComponentRef {
 export interface MenuItem {
   id: string;
   name: string;
+  /** Customer-facing label (packaging, farmers market). Defaults to name. */
+  brandName: string;
   flavorTag: string | null;
   isPrimary: boolean;
   isPlaceholder: boolean;
-  /** When true, name (+ flavor) appears on the public farmers market page. */
+  /** When true, brand name (+ flavor) appears on the public farmers market page. */
   publishToSite: boolean;
   assemblyNotes: string | null;
   category: Category;

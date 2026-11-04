@@ -100,6 +100,7 @@ async function run() {
     const { error } = await sb.from("menu_items").upsert({
       id: m.id,
       name: m.name,
+      brand_name: m.brandName,
       flavor_tag: m.flavorTag,
       is_primary: m.isPrimary,
       is_placeholder: m.isPlaceholder,

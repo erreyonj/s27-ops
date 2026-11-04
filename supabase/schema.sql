@@ -53,6 +53,8 @@ create table if not exists component_lines (
 create table if not exists menu_items (
   id text primary key,
   name text not null,
+  -- Customer-facing label (packaging, farmers market). Usually matches name.
+  brand_name text not null,
   flavor_tag text,
   is_primary boolean not null default false,
   is_placeholder boolean not null default false,
@@ -65,7 +67,7 @@ create table if not exists menu_items (
   labor_hours numeric,
   margin_pct numeric,
   discount_pct numeric,
-  -- Public farmers market page (names only via get_public_market_menu).
+  -- Public farmers market page (brand names via get_public_market_menu).
   publish_to_site boolean not null default false,
   created_at timestamptz not null default now()
 );
@@ -165,17 +167,18 @@ create or replace function get_public_market_menu()
 returns table (
   id text,
   name text,
+  brand_name text,
   flavor_tag text
 )
 language sql
 security definer
 set search_path = public
 as $$
-  select m.id, m.name, m.flavor_tag
+  select m.id, m.name, m.brand_name, m.flavor_tag
   from menu_items m
   where m.publish_to_site
     and not m.is_placeholder
-  order by m.name;
+  order by m.brand_name;
 $$;
 
 revoke all on function get_public_market_menu() from public;

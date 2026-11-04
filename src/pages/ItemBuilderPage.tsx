@@ -72,6 +72,8 @@ export function ItemBuilderPage() {
   const [params] = useSearchParams();
 
   const [itemName, setItemName] = useState(params.get("name") ?? "");
+  const [brandName, setBrandName] = useState(params.get("name") ?? "");
+  const [brandNameTouched, setBrandNameTouched] = useState(false);
   const [flavorTag, setFlavorTag] = useState("");
   const [assemblyNotes, setAssemblyNotes] = useState("");
   const [blocks, setBlocks] = useState<BlockState[]>([newBlock()]);
@@ -171,6 +173,7 @@ export function ItemBuilderPage() {
       await repo.upsertMenuItem({
         id: itemId,
         name: itemName.trim(),
+        brandName: (brandName.trim() || itemName).trim(),
         flavorTag: flavorTag.trim() || null,
         isPrimary: false,
         isPlaceholder: false,
@@ -244,20 +247,36 @@ export function ItemBuilderPage() {
                 <input
                   type="text"
                   value={itemName}
-                  onChange={(e) => setItemName(e.target.value)}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setItemName(next);
+                    if (!brandNameTouched) setBrandName(next);
+                  }}
                   placeholder="e.g. Chocolate Red Wine Cupcake"
                 />
               </label>
               <label>
-                Flavor tag
+                Brand name
                 <input
                   type="text"
-                  value={flavorTag}
-                  onChange={(e) => setFlavorTag(e.target.value)}
-                  placeholder="e.g. rotating"
+                  value={brandName}
+                  onChange={(e) => {
+                    setBrandNameTouched(true);
+                    setBrandName(e.target.value);
+                  }}
+                  placeholder="Customer-facing name"
                 />
               </label>
             </div>
+            <label style={{ display: "block", marginTop: 10 }}>
+              Flavor tag
+              <input
+                type="text"
+                value={flavorTag}
+                onChange={(e) => setFlavorTag(e.target.value)}
+                placeholder="e.g. rotating"
+              />
+            </label>
             <label style={{ display: "block", marginTop: 10 }}>
               Assembly notes
               <textarea

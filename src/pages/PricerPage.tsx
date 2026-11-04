@@ -76,6 +76,7 @@ export function PricerPage() {
     return items.filter(
       (m) =>
         m.name.toLowerCase().includes(q) ||
+        m.brandName.toLowerCase().includes(q) ||
         (m.flavorTag ?? "").toLowerCase().includes(q) ||
         (m.assemblyNotes ?? "").toLowerCase().includes(q)
     );
@@ -311,6 +312,11 @@ export function PricerPage() {
           ) : (
             <>
               <h3 style={{ marginTop: 0 }}>{selected.name}</h3>
+              {selected.brandName !== selected.name && (
+                <p className="note-inline" style={{ marginTop: 0 }}>
+                  Brand: {selected.brandName}
+                </p>
+              )}
               <p className="note-inline">
                 Yield {selected.yieldAmount} {selected.yieldUnit}
                 {selected.assemblyNotes ? ` · ${selected.assemblyNotes}` : ""}

@@ -49,6 +49,7 @@ function toMenuItem(m: any, itemComps: any[]): MenuItem {
   return {
     id: m.id,
     name: m.name,
+    brandName: m.brand_name ?? m.name,
     flavorTag: m.flavor_tag,
     isPrimary: m.is_primary,
     isPlaceholder: m.is_placeholder,
@@ -237,6 +238,7 @@ export class SupabaseRepository implements Repository {
     const { error } = await sb.from("menu_items").upsert({
       id: item.id,
       name: item.name,
+      brand_name: item.brandName,
       flavor_tag: item.flavorTag,
       is_primary: item.isPrimary,
       is_placeholder: item.isPlaceholder,

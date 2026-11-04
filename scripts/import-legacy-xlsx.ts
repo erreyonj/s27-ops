@@ -99,6 +99,7 @@ interface ComponentOut {
 interface MenuItemOut {
   id: string;
   name: string;
+  brandName: string;
   flavorTag: string | null;
   isPrimary: boolean;
   isPlaceholder: boolean;
@@ -601,6 +602,7 @@ async function main() {
     menuItems.push({
       id: `mi-${slugify(combo.name)}`,
       name: combo.name,
+      brandName: combo.name,
       flavorTag: slugify(combo.name),
       isPrimary: false,
       isPlaceholder: false,
@@ -625,6 +627,7 @@ async function main() {
     menuItems.push({
       id: `mi-${slugify(c.name)}`,
       name: c.name,
+      brandName: c.name,
       flavorTag: slugify(c.name),
       isPrimary: isCupcake,
       isPlaceholder: false,
@@ -684,6 +687,7 @@ async function main() {
     linesOut.push(`  {`);
     linesOut.push(`    id: ${tsLiteral(m.id)},`);
     linesOut.push(`    name: ${tsLiteral(m.name)},`);
+    linesOut.push(`    brandName: ${tsLiteral(m.brandName)},`);
     linesOut.push(`    flavorTag: ${tsLiteral(m.flavorTag)},`);
     linesOut.push(`    isPrimary: ${m.isPrimary},`);
     linesOut.push(`    isPlaceholder: ${m.isPlaceholder},`);

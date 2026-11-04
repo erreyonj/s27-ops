@@ -64,6 +64,11 @@ function MenuItemReview({ item }: { item: MenuItem }) {
           <span className="note-inline">on this week’s menu: {existing.quantity} batch{existing.quantity === 1 ? "" : "es"}</span>
         )}
       </div>
+      {item.brandName !== item.name && (
+        <p className="note-inline" style={{ marginTop: 4 }}>
+          Brand: {item.brandName}
+        </p>
+      )}
       <p className="note-inline">
         1 batch → {item.yieldAmount} {item.yieldUnit}
       </p>
@@ -115,6 +120,7 @@ export function MenuBuilderPage() {
       if (!q) return true;
       return (
         m.name.toLowerCase().includes(q) ||
+        m.brandName.toLowerCase().includes(q) ||
         (m.flavorTag ?? "").toLowerCase().includes(q)
       );
     });
@@ -197,6 +203,11 @@ export function MenuBuilderPage() {
             >
               <p className="eyebrow">{m.category}</p>
               <h3>{m.name}</h3>
+              {m.brandName !== m.name && (
+                <p className="note-inline" style={{ margin: "2px 0 0" }}>
+                  Brand: {m.brandName}
+                </p>
+              )}
               <p className="note-inline">
                 1 batch → {m.yieldAmount} {m.yieldUnit}
                 {m.isPlaceholder ? " · placeholder" : ""}
