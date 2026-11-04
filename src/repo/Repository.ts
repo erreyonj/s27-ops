@@ -2,8 +2,11 @@ import type {
   AppData,
   BakerySettings,
   BaseUnit,
+  Category,
+  CategoryPackagingLine,
   ItemComponent,
   MenuItem,
+  PackagingSupply,
   RawIngredient,
 } from "../domain/types";
 
@@ -26,6 +29,10 @@ export interface Repository {
     packQtyUnit: BaseUnit | null
   ): Promise<void>;
   upsertIngredient(ingredient: RawIngredient): Promise<void>;
+
+  upsertPackagingSupply(supply: PackagingSupply): Promise<void>;
+  /** Replace all packaging lines for one category kit. */
+  setCategoryPackaging(category: Category, lines: CategoryPackagingLine[]): Promise<void>;
 
   updateBakerySettings(settings: BakerySettings): Promise<void>;
 

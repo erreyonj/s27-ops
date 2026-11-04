@@ -5,6 +5,11 @@
 import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { seedComponents, seedIngredients, seedMenuItems } from "../src/data/seed.ts";
+import {
+  seedCategoryPackaging,
+  seedPackagingSupplies,
+} from "../src/data/packaging.ts";
+import type { Category } from "../src/domain/types.ts";
 
 function loadDotEnv(): void {
   try {
@@ -121,6 +126,40 @@ async function run() {
     if (ins.error) throw ins.error;
   }
 
+  console.log("Seeding packaging supplies + category kits…");
+  {
+    const { error } = await sb.from("packaging_supplies").upsert(
+      seedPackagingSupplies.map((s) => ({
+        id: s.id,
+        name: s.name,
+        pack_price: s.packPrice,
+        pack_qty: s.packQty,
+        notes: s.notes,
+      }))
+    );
+    if (error) throw error;
+
+    const byCat = new Map<Category, typeof seedCategoryPackaging>();
+    for (const line of seedCategoryPackaging) {
+      const list = byCat.get(line.category) ?? [];
+      list.push(line);
+      byCat.set(line.category, list);
+    }
+    for (const [category, lines] of byCat) {
+      const del = await sb.from("category_packaging_lines").delete().eq("category", category);
+      if (del.error) throw del.error;
+      const ins = await sb.from("category_packaging_lines").insert(
+        lines.map((l, i) => ({
+          category,
+          supply_id: l.supplyId,
+          qty_per_unit: l.qtyPerUnit,
+          sort: l.sort ?? i,
+        }))
+      );
+      if (ins.error) throw ins.error;
+    }
+  }
+
   const menu = await sb.from("current_menu").upsert({ id: "current" });
   if (menu.error) throw menu.error;
 
@@ -131,7 +170,9 @@ async function run() {
     seedComponents.length,
     "components,",
     seedMenuItems.length,
-    "menu items."
+    "menu items,",
+    seedPackagingSupplies.length,
+    "packaging supplies."
   );
 }
 

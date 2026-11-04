@@ -1,13 +1,16 @@
 import { getSupabase } from "../lib/supabase";
 import { seedComponents, seedIngredients, seedMenuItems } from "../data/seed";
+import { seedCategoryPackaging, seedPackagingSupplies } from "../data/packaging";
 import {
   DEFAULT_BAKERY_SETTINGS,
   type AppData,
   type BakerySettings,
   type BaseUnit,
   type Category,
+  type CategoryPackagingLine,
   type ItemComponent,
   type MenuItem,
+  type PackagingSupply,
   type RawIngredient,
 } from "../domain/types";
 import type { Repository } from "./Repository";
@@ -73,7 +76,18 @@ export class SupabaseRepository implements Repository {
 
   async loadAll(): Promise<AppData> {
     const sb = getSupabase();
-    const [ing, comps, lines, items, itemComps, entries, menuRow, settingsRow] = await Promise.all([
+    const [
+      ing,
+      comps,
+      lines,
+      items,
+      itemComps,
+      entries,
+      menuRow,
+      settingsRow,
+      pkgSupplies,
+      pkgLines,
+    ] = await Promise.all([
       sb.from("raw_ingredients").select("*").order("name"),
       sb.from("item_components").select("*").order("name"),
       sb.from("component_lines").select("*").order("sort"),
@@ -82,8 +96,21 @@ export class SupabaseRepository implements Repository {
       sb.from("current_menu_entries").select("*").eq("menu_id", "current"),
       sb.from("current_menu").select("*").eq("id", "current").maybeSingle(),
       sb.from("bakery_settings").select("*").eq("id", "default").maybeSingle(),
+      sb.from("packaging_supplies").select("*").order("name"),
+      sb.from("category_packaging_lines").select("*").order("sort"),
     ]);
-    for (const res of [ing, comps, lines, items, itemComps, entries, menuRow, settingsRow]) {
+    for (const res of [
+      ing,
+      comps,
+      lines,
+      items,
+      itemComps,
+      entries,
+      menuRow,
+      settingsRow,
+      pkgSupplies,
+      pkgLines,
+    ]) {
       if (res.error) throw res.error;
     }
 
@@ -112,6 +139,21 @@ export class SupabaseRepository implements Repository {
       toMenuItem(m, itemComps.data ?? [])
     );
 
+    const packagingSupplies: PackagingSupply[] = (pkgSupplies.data ?? []).map((s: any) => ({
+      id: s.id,
+      name: s.name,
+      packPrice: s.pack_price === null || s.pack_price === undefined ? null : Number(s.pack_price),
+      packQty: s.pack_qty === null || s.pack_qty === undefined ? null : Number(s.pack_qty),
+      notes: s.notes ?? null,
+    }));
+
+    const categoryPackaging: CategoryPackagingLine[] = (pkgLines.data ?? []).map((l: any) => ({
+      category: l.category as Category,
+      supplyId: l.supply_id,
+      qtyPerUnit: Number(l.qty_per_unit ?? 1),
+      sort: l.sort ?? 0,
+    }));
+
     return {
       ingredients: (ing.data ?? []).map(toIngredient),
       components,
@@ -125,6 +167,8 @@ export class SupabaseRepository implements Repository {
         })),
       },
       settings: toSettings(settingsRow.data),
+      packagingSupplies,
+      categoryPackaging,
     };
   }
 
@@ -253,6 +297,38 @@ export class SupabaseRepository implements Repository {
     if (error) throw error;
   }
 
+  async upsertPackagingSupply(supply: PackagingSupply): Promise<void> {
+    const sb = getSupabase();
+    const { error } = await sb.from("packaging_supplies").upsert({
+      id: supply.id,
+      name: supply.name,
+      pack_price: supply.packPrice,
+      pack_qty: supply.packQty,
+      notes: supply.notes,
+    });
+    if (error) throw error;
+  }
+
+  async setCategoryPackaging(
+    category: Category,
+    lines: CategoryPackagingLine[]
+  ): Promise<void> {
+    const sb = getSupabase();
+    const del = await sb.from("category_packaging_lines").delete().eq("category", category);
+    if (del.error) throw del.error;
+    if (lines.length) {
+      const ins = await sb.from("category_packaging_lines").insert(
+        lines.map((l, i) => ({
+          category,
+          supply_id: l.supplyId,
+          qty_per_unit: l.qtyPerUnit,
+          sort: l.sort ?? i,
+        }))
+      );
+      if (ins.error) throw ins.error;
+    }
+  }
+
   async updateBakerySettings(settings: BakerySettings): Promise<void> {
     const sb = getSupabase();
     const { error } = await sb.from("bakery_settings").upsert({
@@ -317,6 +393,19 @@ export class SupabaseRepository implements Repository {
     }
     for (const m of seedMenuItems) {
       await this.upsertMenuItem(m);
+    }
+
+    for (const s of seedPackagingSupplies) {
+      await this.upsertPackagingSupply(s);
+    }
+    const byCat = new Map<Category, CategoryPackagingLine[]>();
+    for (const line of seedCategoryPackaging) {
+      const list = byCat.get(line.category) ?? [];
+      list.push(line);
+      byCat.set(line.category, list);
+    }
+    for (const [category, lines] of byCat) {
+      await this.setCategoryPackaging(category, lines);
     }
 
     const menuRes = await sb.from("current_menu").upsert({ id: "current" });

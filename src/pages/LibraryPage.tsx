@@ -2,9 +2,13 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useApp } from "../state/AppState";
 import { scaleQtyText } from "../domain/scaling";
-import { unitCost } from "../domain/aggregate";
+import { packagingUnitCost, unitCost } from "../domain/aggregate";
 import { G_PER_LB } from "../domain/scaling";
-import { CATEGORIES, type Category } from "../domain/types";
+import {
+  CATEGORIES,
+  type Category,
+  type CategoryPackagingLine,
+} from "../domain/types";
 
 function money(n: number): string {
   return `$${n.toFixed(2)}`;
@@ -16,14 +20,19 @@ function legacyPriceNote(notes: string | null | undefined): string | null {
   return m ? m[0] : null;
 }
 
+type LibraryTab = "components" | "items" | "ingredients" | "packaging";
+
 export function LibraryPage() {
   const { data, repo, refresh } = useApp();
   const [scale, setScale] = useState(1);
-  const [tab, setTab] = useState<"components" | "items" | "ingredients">("components");
+  const [tab, setTab] = useState<LibraryTab>("components");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<Category | "all">("all");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [draft, setDraft] = useState<Record<string, { price: string; qty: string }>>({});
+  const [pkgDraft, setPkgDraft] = useState<Record<string, { price: string; qty: string }>>({});
+  const [kitCategory, setKitCategory] = useState<Category>("dough");
+  const [kitSaving, setKitSaving] = useState(false);
 
   const ingName = useMemo(() => {
     const m = new Map(data!.ingredients.map((i) => [i.id, i.name]));
@@ -91,6 +100,63 @@ export function LibraryPage() {
     await refresh();
   }
 
+  async function savePkgPrice(id: string) {
+    const d = pkgDraft[id];
+    if (!d) return;
+    const supply = data!.packagingSupplies.find((s) => s.id === id);
+    if (!supply) return;
+    const price = d.price === "" ? null : Number(d.price);
+    const qty = d.qty === "" ? null : Number(d.qty);
+    await repo.upsertPackagingSupply({
+      ...supply,
+      packPrice: price,
+      packQty: qty,
+    });
+    const next = { ...pkgDraft };
+    delete next[id];
+    setPkgDraft(next);
+    await refresh();
+  }
+
+  const kitLines = useMemo(() => {
+    return data!.categoryPackaging
+      .filter((l) => l.category === kitCategory)
+      .slice()
+      .sort((a, b) => a.sort - b.sort);
+  }, [data, kitCategory]);
+
+  const kitSelected = useMemo(
+    () => new Set(kitLines.map((l) => l.supplyId)),
+    [kitLines]
+  );
+
+  async function toggleKitSupply(supplyId: string) {
+    setKitSaving(true);
+    try {
+      let next: CategoryPackagingLine[];
+      if (kitSelected.has(supplyId)) {
+        next = kitLines.filter((l) => l.supplyId !== supplyId);
+      } else {
+        next = [
+          ...kitLines,
+          {
+            category: kitCategory,
+            supplyId,
+            qtyPerUnit: 1,
+            sort: kitLines.length,
+          },
+        ];
+      }
+      await repo.setCategoryPackaging(
+        kitCategory,
+        next.map((l, i) => ({ ...l, sort: i }))
+      );
+      await refresh();
+    } finally {
+      setKitSaving(false);
+    }
+  }
+
   return (
     <>
       <p className="eyebrow">Library</p>
@@ -103,6 +169,7 @@ export function LibraryPage() {
               ["components", "Components"],
               ["items", "Menu items"],
               ["ingredients", "Ingredients"],
+              ["packaging", "Packaging"],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -128,42 +195,44 @@ export function LibraryPage() {
         )}
       </div>
 
-      <div className="card no-print" style={{ marginBottom: 16 }}>
-        <input
-          type="search"
-          placeholder={
-            tab === "ingredients"
-              ? "Search ingredients…"
-              : tab === "items"
-                ? "Search menu items…"
-                : "Search components…"
-          }
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          style={{ width: "100%", marginBottom: tab === "ingredients" ? 0 : 12 }}
-        />
-        {tab !== "ingredients" && (
-          <div className="btn-group" style={{ flexWrap: "wrap" }}>
-            <button
-              type="button"
-              className={category === "all" ? "active" : ""}
-              onClick={() => setCategory("all")}
-            >
-              All
-            </button>
-            {CATEGORIES.map((c) => (
+      {tab !== "packaging" && (
+        <div className="card no-print" style={{ marginBottom: 16 }}>
+          <input
+            type="search"
+            placeholder={
+              tab === "ingredients"
+                ? "Search ingredients…"
+                : tab === "items"
+                  ? "Search menu items…"
+                  : "Search components…"
+            }
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            style={{ width: "100%", marginBottom: tab === "ingredients" ? 0 : 12 }}
+          />
+          {tab !== "ingredients" && (
+            <div className="btn-group" style={{ flexWrap: "wrap" }}>
               <button
-                key={c}
                 type="button"
-                className={category === c ? "active" : ""}
-                onClick={() => setCategory(c)}
+                className={category === "all" ? "active" : ""}
+                onClick={() => setCategory("all")}
               >
-                {c}
+                All
               </button>
-            ))}
-          </div>
-        )}
-      </div>
+              {CATEGORIES.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  className={category === c ? "active" : ""}
+                  onClick={() => setCategory(c)}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {tab === "components" && (
         <div className="grid grid-3">
@@ -416,6 +485,125 @@ export function LibraryPage() {
             <p className="muted">No ingredients match this search.</p>
           )}
         </div>
+      )}
+
+      {tab === "packaging" && (
+        <>
+          <div className="card">
+            <h3 style={{ marginTop: 0 }}>Packaging supplies</h3>
+            <p className="note-inline">
+              Pack price ÷ pack count = unit cost. Each sellable unit uses the category kit
+              below (cookies / dough = bag + rounded label; others = box + square label).
+            </p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Supply</th>
+                  <th className="num">Pack price ($)</th>
+                  <th className="num">Pack contains</th>
+                  <th className="num">$ / ea</th>
+                  <th className="no-print"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {data!.packagingSupplies.map((s) => {
+                  const d = pkgDraft[s.id] ?? {
+                    price: s.packPrice?.toString() ?? "",
+                    qty: s.packQty?.toString() ?? "",
+                  };
+                  const cost = packagingUnitCost(s);
+                  const dirty = pkgDraft[s.id] != null;
+                  return (
+                    <tr key={s.id}>
+                      <td>
+                        <strong>{s.name}</strong>
+                        {s.notes && <div className="note-inline">{s.notes}</div>}
+                      </td>
+                      <td className="num">
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={d.price}
+                          onChange={(e) =>
+                            setPkgDraft({
+                              ...pkgDraft,
+                              [s.id]: { ...d, price: e.target.value },
+                            })
+                          }
+                          style={{ width: 90, textAlign: "right" }}
+                        />
+                      </td>
+                      <td className="num">
+                        <input
+                          type="number"
+                          min={0}
+                          step="1"
+                          value={d.qty}
+                          onChange={(e) =>
+                            setPkgDraft({
+                              ...pkgDraft,
+                              [s.id]: { ...d, qty: e.target.value },
+                            })
+                          }
+                          style={{ width: 90, textAlign: "right" }}
+                        />
+                      </td>
+                      <td className="num muted">
+                        {cost == null ? "—" : money(cost)}
+                      </td>
+                      <td className="no-print">
+                        {dirty && (
+                          <button className="btn sm" onClick={() => void savePkgPrice(s.id)}>
+                            Save
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="card">
+            <h3 style={{ marginTop: 0 }}>Category kits</h3>
+            <p className="note-inline">
+              Toggle which supplies apply per category. Qty is always 1 per sellable unit
+              (× menu yield in the pricer).
+            </p>
+            <div className="btn-group" style={{ flexWrap: "wrap", marginBottom: 12 }}>
+              {CATEGORIES.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  className={kitCategory === c ? "active" : ""}
+                  onClick={() => setKitCategory(c)}
+                  disabled={kitSaving}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              {data!.packagingSupplies.map((s) => {
+                const on = kitSelected.has(s.id);
+                return (
+                  <li key={s.id} className="check-row" style={{ borderBottom: "1px solid var(--line)" }}>
+                    <input
+                      type="checkbox"
+                      id={`kit-${kitCategory}-${s.id}`}
+                      checked={on}
+                      disabled={kitSaving}
+                      onChange={() => void toggleKitSupply(s.id)}
+                    />
+                    <label htmlFor={`kit-${kitCategory}-${s.id}`}>{s.name}</label>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </>
       )}
     </>
   );

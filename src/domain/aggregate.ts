@@ -1,9 +1,11 @@
 import type {
   AppData,
   BakerySettings,
+  CategoryPackagingLine,
   GroceryLine,
   ItemComponent,
   MenuItem,
+  PackagingSupply,
   RawIngredient,
 } from "./types";
 
@@ -220,11 +222,89 @@ export interface QuoteDraft {
   discountPct: number | null;
 }
 
+export function packagingUnitCost(supply: PackagingSupply): number | null {
+  if (supply.packPrice == null || supply.packQty == null || supply.packQty <= 0) return null;
+  return supply.packPrice / supply.packQty;
+}
+
+export interface PackagingCost {
+  /** Cost for one sellable unit's kit. */
+  packCostPerUnit: number;
+  /** Cost for the whole menu-item batch (× yieldAmount). */
+  packaging: number;
+  parts: Array<{ name: string; qty: number; unitCost: number; lineCost: number }>;
+  missingSupplies: string[];
+  kitMissing: boolean;
+}
+
+/** Category packaging kit × yieldAmount (every sellable unit gets a kit). */
+export function packagingCostForItem(
+  item: MenuItem,
+  supplies: PackagingSupply[],
+  categoryLines: CategoryPackagingLine[]
+): PackagingCost {
+  const yieldAmt = item.yieldAmount > 0 ? item.yieldAmount : 1;
+  const supplyById = new Map(supplies.map((s) => [s.id, s]));
+  const kit = categoryLines
+    .filter((l) => l.category === item.category)
+    .slice()
+    .sort((a, b) => a.sort - b.sort);
+
+  if (kit.length === 0) {
+    return {
+      packCostPerUnit: 0,
+      packaging: 0,
+      parts: [],
+      missingSupplies: [],
+      kitMissing: true,
+    };
+  }
+
+  let packCostPerUnit = 0;
+  const parts: PackagingCost["parts"] = [];
+  const missingSupplies: string[] = [];
+
+  for (const line of kit) {
+    const supply = supplyById.get(line.supplyId);
+    if (!supply) {
+      missingSupplies.push(line.supplyId);
+      continue;
+    }
+    const unit = packagingUnitCost(supply);
+    if (unit == null) {
+      missingSupplies.push(supply.name);
+      continue;
+    }
+    const qty = line.qtyPerUnit * yieldAmt;
+    const lineCost = unit * qty;
+    packCostPerUnit += unit * line.qtyPerUnit;
+    parts.push({
+      name: supply.name,
+      qty,
+      unitCost: unit,
+      lineCost,
+    });
+  }
+
+  return {
+    packCostPerUnit,
+    packaging: packCostPerUnit * yieldAmt,
+    parts,
+    missingSupplies: [...new Set(missingSupplies)],
+    kitMissing: false,
+  };
+}
+
 export interface MenuItemQuote {
   item: MenuItem;
   materials: number;
   materialsParts: Array<{ name: string; batchCost: number }>;
   missingIngredients: string[];
+  packaging: number;
+  packCostPerUnit: number;
+  packagingParts: PackagingCost["parts"];
+  packagingKitMissing: boolean;
+  missingPackaging: string[];
   laborHours: number | null;
   laborHoursMissing: boolean;
   labor: number;
@@ -247,18 +327,21 @@ export interface MenuItemQuote {
 
 /**
  * Excel Cake Builder–style quote for one batch:
- * materials + labor → / (1 - margin) → × (1 - discount) → × (1 + tax)
+ * materials + packaging + labor → / (1 - margin) → × (1 - discount) → × (1 + tax)
  */
 export function quoteMenuItem(
   item: MenuItem,
   compById: Map<string, ItemComponent>,
   ingById: Map<string, RawIngredient>,
   settings: BakerySettings,
-  draft?: QuoteDraft
+  draft?: QuoteDraft,
+  packagingSupplies: PackagingSupply[] = [],
+  categoryPackaging: CategoryPackagingLine[] = []
 ): MenuItemQuote {
   const mats = menuItemCost(item, compById, ingById);
   const yieldAmt = item.yieldAmount > 0 ? item.yieldAmount : 1;
   const materials = mats.batchCost;
+  const pack = packagingCostForItem(item, packagingSupplies, categoryPackaging);
 
   const laborHours = draft ? draft.laborHours : item.laborHours;
   const laborHoursMissing = laborHours == null;
@@ -277,7 +360,7 @@ export function quoteMenuItem(
     : discountRaw;
   const discountZeroed = !discountInherited && effectiveDiscountPct === 0;
 
-  const baseCost = materials + labor;
+  const baseCost = materials + pack.packaging + labor;
   const afterMargin =
     effectiveMarginPct > 0 && effectiveMarginPct < 1
       ? baseCost / (1 - effectiveMarginPct)
@@ -290,6 +373,15 @@ export function quoteMenuItem(
   const warnings: string[] = [];
   if (mats.missing.length) {
     warnings.push(`Missing ingredient prices: ${mats.missing.slice(0, 5).join(", ")}${mats.missing.length > 5 ? "…" : ""}`);
+  }
+  if (pack.kitMissing) {
+    warnings.push(`No packaging kit for category "${item.category}"`);
+  } else if (pack.missingSupplies.length) {
+    warnings.push(
+      `Missing packaging prices: ${pack.missingSupplies.slice(0, 5).join(", ")}${
+        pack.missingSupplies.length > 5 ? "…" : ""
+      }`
+    );
   }
   if (laborHoursMissing) {
     warnings.push("Labor hours not set — labor treated as $0");
@@ -347,6 +439,11 @@ export function quoteMenuItem(
       batchCost: p.batchCost,
     })),
     missingIngredients: mats.missing,
+    packaging: pack.packaging,
+    packCostPerUnit: pack.packCostPerUnit,
+    packagingParts: pack.parts,
+    packagingKitMissing: pack.kitMissing,
+    missingPackaging: pack.missingSupplies,
     laborHours,
     laborHoursMissing,
     labor,

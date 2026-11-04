@@ -81,6 +81,62 @@ create table if not exists bakery_settings (
 
 insert into bakery_settings (id) values ('default') on conflict do nothing;
 
+-- Packaging supplies (bags, boxes, labels) costed like ingredient packs.
+create table if not exists packaging_supplies (
+  id text primary key,
+  name text not null,
+  pack_price numeric,
+  pack_qty numeric,
+  notes text,
+  created_at timestamptz not null default now()
+);
+
+-- Per-category packaging kit: qty of each supply per sellable unit.
+create table if not exists category_packaging_lines (
+  id bigint generated always as identity primary key,
+  category public.category not null,
+  supply_id text not null references packaging_supplies (id) on delete cascade,
+  qty_per_unit numeric not null default 1,
+  sort int not null default 0,
+  unique (category, supply_id)
+);
+
+insert into packaging_supplies (id, name, pack_price, pack_qty, notes) values
+  ('pkg-ingredient-label', '2×3 Ingredient Label', 7.99, 500, 'Roll of 500'),
+  ('pkg-brand-label-rounded', 'Thermal Brand Label (Rounded)', 12.99, 150, 'Roll of 150'),
+  ('pkg-brand-label-square', 'Thermal Brand Label (Square)', 12.99, 150, 'Roll of 150'),
+  ('pkg-cookie-bag', 'Cookie Bag', 9.99, 200, '200 ct'),
+  ('pkg-cake-box', 'Cake Box', 32.39, 100, '100 ct')
+on conflict (id) do nothing;
+
+insert into category_packaging_lines (category, supply_id, qty_per_unit, sort) values
+  ('dough', 'pkg-cookie-bag', 1, 0),
+  ('dough', 'pkg-brand-label-rounded', 1, 1),
+  ('dough', 'pkg-ingredient-label', 1, 2)
+on conflict (category, supply_id) do nothing;
+
+insert into category_packaging_lines (category, supply_id, qty_per_unit, sort)
+select c.cat, s.supply_id, 1, s.sort
+from (
+  values
+    ('cake'::public.category),
+    ('frosting'::public.category),
+    ('pie'::public.category),
+    ('loaf'::public.category),
+    ('filling'::public.category),
+    ('topping'::public.category),
+    ('pudding'::public.category),
+    ('other'::public.category),
+    ('bars'::public.category)
+) as c(cat)
+cross join (
+  values
+    ('pkg-cake-box', 0),
+    ('pkg-brand-label-square', 1),
+    ('pkg-ingredient-label', 2)
+) as s(supply_id, sort)
+on conflict (category, supply_id) do nothing;
+
 create table if not exists menu_item_components (
   id bigint generated always as identity primary key,
   menu_item_id text not null references menu_items (id) on delete cascade,
@@ -134,6 +190,8 @@ alter table menu_item_components enable row level security;
 alter table current_menu enable row level security;
 alter table current_menu_entries enable row level security;
 alter table bakery_settings enable row level security;
+alter table packaging_supplies enable row level security;
+alter table category_packaging_lines enable row level security;
 
 do $$
 declare t text;
@@ -141,7 +199,7 @@ begin
   foreach t in array array[
     'raw_ingredients','item_components','component_lines',
     'menu_items','menu_item_components','current_menu','current_menu_entries',
-    'bakery_settings'
+    'bakery_settings','packaging_supplies','category_packaging_lines'
   ] loop
     execute format('drop policy if exists "authenticated full access" on %I', t);
     execute format(
@@ -158,7 +216,7 @@ begin
   foreach t in array array[
     'raw_ingredients','item_components','component_lines',
     'menu_items','menu_item_components','current_menu','current_menu_entries',
-    'bakery_settings'
+    'bakery_settings','packaging_supplies','category_packaging_lines'
   ] loop
     begin
       execute format('alter publication supabase_realtime add table %I', t);

@@ -62,9 +62,10 @@ Without Supabase keys, the app runs in **demo mode** (seeded, in-memory, nothing
 ## Pricing formula
 
 ```
-materials       = ingredient rollup for one MenuItem yield
+materials       = ingredient rollup for one MenuItem batch
+packaging       = category kit unit cost × yieldAmount
 labor           = laborHours × hourlyRate   (0 if hours missing)
-baseCost        = materials + labor
+baseCost        = materials + packaging + labor
 afterMargin     = margin < 1 ? baseCost / (1 - margin) : baseCost
 afterDiscount   = afterMargin × (1 - discount)
 suggestedRetail = afterDiscount × (1 + tax)
@@ -72,7 +73,9 @@ suggestedRetail = afterDiscount × (1 + tax)
 
 - Hourly rate and sales tax are **global** (`bakery_settings`).
 - Margin / discount: item override if set, else bakery default. `null` = inherit; `0` = intentionally zeroed.
+- Packaging kits are per menu `category` (`dough` = bag + rounded label; others = box + square label); edit in Library → Packaging.
 - Draft changes in the Pricer UI until **Commit to item**; **Zero** buttons set a draft to `0`.
+- Existing projects: also run `supabase/migration_packaging.sql`.
 
 ## Setup
 

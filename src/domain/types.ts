@@ -109,6 +109,23 @@ export interface BakerySettings {
   defaultDiscountPct: number;
 }
 
+/** Purchased packaging SKU (bag, box, label roll). */
+export interface PackagingSupply {
+  id: string;
+  name: string;
+  packPrice: number | null;
+  packQty: number | null;
+  notes: string | null;
+}
+
+/** One line in a category packaging kit (qty per sellable unit). */
+export interface CategoryPackagingLine {
+  category: Category;
+  supplyId: string;
+  qtyPerUnit: number;
+  sort: number;
+}
+
 export interface MenuEntry {
   menuItemId: string;
   quantity: number;
@@ -126,6 +143,8 @@ export interface AppData {
   menuItems: MenuItem[];
   menu: CurrentMenu;
   settings: BakerySettings;
+  packagingSupplies: PackagingSupply[];
+  categoryPackaging: CategoryPackagingLine[];
 }
 
 export const DEFAULT_BAKERY_SETTINGS: BakerySettings = {

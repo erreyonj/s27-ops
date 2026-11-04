@@ -7,14 +7,18 @@ import {
   seedIngredients,
   seedMenuItems,
 } from "../data/seed";
+import { seedCategoryPackaging, seedPackagingSupplies } from "../data/packaging";
 import {
   DEFAULT_BAKERY_SETTINGS,
   type AppData,
   type BakerySettings,
   type BaseUnit,
+  type Category,
+  type CategoryPackagingLine,
   type ItemComponent,
   type MenuItem,
   type MenuEntry,
+  type PackagingSupply,
   type RawIngredient,
 } from "../domain/types";
 import type { Repository } from "./Repository";
@@ -27,6 +31,8 @@ interface DemoState {
   menuItems: MenuItem[];
   entries: MenuEntry[];
   settings: BakerySettings;
+  packagingSupplies: PackagingSupply[];
+  categoryPackaging: CategoryPackagingLine[];
 }
 
 function normalizeMenuItem(m: MenuItem): MenuItem {
@@ -53,6 +59,10 @@ function loadState(): DemoState {
         menuItems: (parsed.menuItems ?? structuredClone(seedMenuItems)).map(normalizeMenuItem),
         entries: parsed.entries ?? [],
         settings: { ...DEFAULT_BAKERY_SETTINGS, ...(parsed.settings ?? {}) },
+        packagingSupplies:
+          parsed.packagingSupplies ?? structuredClone(seedPackagingSupplies),
+        categoryPackaging:
+          parsed.categoryPackaging ?? structuredClone(seedCategoryPackaging),
       };
     }
   } catch {
@@ -64,6 +74,8 @@ function loadState(): DemoState {
     menuItems: structuredClone(seedMenuItems).map(normalizeMenuItem),
     entries: [],
     settings: structuredClone(DEFAULT_BAKERY_SETTINGS),
+    packagingSupplies: structuredClone(seedPackagingSupplies),
+    categoryPackaging: structuredClone(seedCategoryPackaging),
   };
 }
 
@@ -86,6 +98,8 @@ export class MemoryRepository implements Repository {
       menuItems: this.state.menuItems,
       menu: { id: "current", weekOf: null, entries: this.state.entries },
       settings: this.state.settings,
+      packagingSupplies: this.state.packagingSupplies,
+      categoryPackaging: this.state.categoryPackaging,
     };
   }
 
@@ -140,6 +154,24 @@ export class MemoryRepository implements Repository {
     const i = this.state.ingredients.findIndex((x) => x.id === ingredient.id);
     if (i >= 0) this.state.ingredients[i] = ingredient;
     else this.state.ingredients.push(ingredient);
+    this.persist();
+  }
+
+  async upsertPackagingSupply(supply: PackagingSupply): Promise<void> {
+    const i = this.state.packagingSupplies.findIndex((s) => s.id === supply.id);
+    if (i >= 0) this.state.packagingSupplies[i] = supply;
+    else this.state.packagingSupplies.push(supply);
+    this.persist();
+  }
+
+  async setCategoryPackaging(
+    category: Category,
+    lines: CategoryPackagingLine[]
+  ): Promise<void> {
+    this.state.categoryPackaging = [
+      ...this.state.categoryPackaging.filter((l) => l.category !== category),
+      ...lines.map((l, i) => ({ ...l, category, sort: l.sort ?? i })),
+    ];
     this.persist();
   }
 

@@ -83,7 +83,15 @@ export function PricerPage() {
 
   const quote = useMemo(() => {
     if (!selected || !draft) return null;
-    return quoteMenuItem(selected, compById, ingById, data!.settings, draft);
+    return quoteMenuItem(
+      selected,
+      compById,
+      ingById,
+      data!.settings,
+      draft,
+      data!.packagingSupplies,
+      data!.categoryPackaging
+    );
   }, [selected, draft, compById, ingById, data]);
 
   function selectItem(id: string) {
@@ -150,9 +158,9 @@ export function PricerPage() {
       <p className="eyebrow">Section C · Pricing calculator</p>
       <h1>Quote a menu item.</h1>
       <p className="muted">
-        Materials roll up from recipes. Add labor hours, then apply bakery margin, discount,
-        and tax — same shape as the legacy Excel calculator. Ingredient pack prices live in{" "}
-        <Link to="/library">Library → Ingredients</Link>.
+        Materials and packaging roll up from recipes and category kits. Add labor hours, then
+        apply bakery margin, discount, and tax. Ingredient and packaging pack prices live in{" "}
+        <Link to="/library">Library</Link>.
       </p>
 
       <div className="card">
@@ -324,6 +332,28 @@ export function PricerPage() {
                 ))}
               </ul>
 
+              <h4>Packaging</h4>
+              <p style={{ margin: "4px 0" }}>
+                <strong>{money(quote.packaging)}</strong>
+                <span className="muted">
+                  {" "}
+                  · {quote.yieldAmount}× {selected.category} kit
+                  {quote.packCostPerUnit > 0
+                    ? ` (${money(quote.packCostPerUnit)}/unit)`
+                    : ""}
+                </span>
+              </p>
+              <ul style={{ listStyle: "none", padding: 0, margin: "0 0 12px" }}>
+                {quote.packagingParts.map((p) => (
+                  <li key={p.name} className="note-inline">
+                    {p.qty}× {p.name}: {money(p.lineCost)}
+                  </li>
+                ))}
+                {quote.packagingKitMissing && (
+                  <li className="note-inline">No kit for this category</li>
+                )}
+              </ul>
+
               <h4>Labor &amp; overrides</h4>
               <div
                 style={{
@@ -442,6 +472,10 @@ export function PricerPage() {
                   <tr>
                     <td>Materials</td>
                     <td className="num">{money(quote.materials)}</td>
+                  </tr>
+                  <tr>
+                    <td>Packaging</td>
+                    <td className="num">{money(quote.packaging)}</td>
                   </tr>
                   <tr>
                     <td>
