@@ -168,13 +168,15 @@ returns table (
   id text,
   name text,
   brand_name text,
-  flavor_tag text
+  flavor_tag text,
+  category public.category,
+  yield_unit text
 )
 language sql
 security definer
 set search_path = public
 as $$
-  select m.id, m.name, m.brand_name, m.flavor_tag
+  select m.id, m.name, m.brand_name, m.flavor_tag, m.category, m.yield_unit
   from menu_items m
   where m.publish_to_site
     and not m.is_placeholder

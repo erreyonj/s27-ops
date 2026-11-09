@@ -222,6 +222,14 @@ export interface QuoteDraft {
   discountPct: number | null;
 }
 
+/** Category labor default when an item has no saved laborHours (cookies & bars → 0.7 h). */
+export function defaultLaborHoursForItem(item: MenuItem): number | null {
+  if (item.category === "bars") return 0.7;
+  const unit = item.yieldUnit.trim().toLowerCase();
+  if (unit.includes("cookie") || unit.includes("bar")) return 0.7;
+  return null;
+}
+
 export function packagingUnitCost(supply: PackagingSupply): number | null {
   if (supply.packPrice == null || supply.packQty == null || supply.packQty <= 0) return null;
   return supply.packPrice / supply.packQty;
@@ -343,8 +351,11 @@ export function quoteMenuItem(
   const materials = mats.batchCost;
   const pack = packagingCostForItem(item, packagingSupplies, categoryPackaging);
 
-  const laborHours = draft ? draft.laborHours : item.laborHours;
+  const laborRaw = draft ? draft.laborHours : item.laborHours;
+  const laborCategoryDefault = defaultLaborHoursForItem(item);
+  const laborHours = laborRaw ?? laborCategoryDefault;
   const laborHoursMissing = laborHours == null;
+  const laborFromCategoryDefault = laborRaw == null && laborCategoryDefault != null;
   const labor =
     laborHoursMissing || laborHours <= 0 ? 0 : laborHours * settings.hourlyRate;
 
@@ -385,6 +396,8 @@ export function quoteMenuItem(
   }
   if (laborHoursMissing) {
     warnings.push("Labor hours not set — labor treated as $0");
+  } else if (laborFromCategoryDefault) {
+    warnings.push(`Using cookie/bar default labor ${laborCategoryDefault} h`);
   } else if (laborHours === 0) {
     warnings.push("Labor hours zeroed for this item");
   }

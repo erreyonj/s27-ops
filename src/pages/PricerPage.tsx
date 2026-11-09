@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useApp } from "../state/AppState";
 import {
+  defaultLaborHoursForItem,
   formatRetailForBatch,
   menuItemCost,
   quoteMenuItem,
@@ -19,10 +20,334 @@ function pctLabel(n: number): string {
 
 function draftFromItem(item: MenuItem): QuoteDraft {
   return {
-    laborHours: item.laborHours,
+    laborHours: item.laborHours ?? defaultLaborHoursForItem(item),
     marginPct: item.marginPct,
     discountPct: item.discountPct,
   };
+}
+
+function PriceTagIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <path
+        d="M1.5 7.5V2.5h5l5.5 5.5-5 5L1.5 7.5Z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <circle cx="4.4" cy="4.4" r="0.9" fill="currentColor" />
+    </svg>
+  );
+}
+
+function BackArrowIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <path
+        d="M8.5 2.5 3.5 7l5 4.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function WarnIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M8 1.5 14.5 13.5H1.5L8 1.5Z"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
+      <path d="M8 6v3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <circle cx="8" cy="11.5" r="0.85" fill="currentColor" />
+    </svg>
+  );
+}
+
+function CurrentMenuPriceCard({ item }: { item: MenuItem }) {
+  const { data, repo, refresh } = useApp();
+  const [draft, setDraft] = useState<QuoteDraft>(() => draftFromItem(item));
+  const [committing, setCommitting] = useState(false);
+
+  const ingById = useMemo(
+    () => new Map(data!.ingredients.map((i) => [i.id, i])),
+    [data]
+  );
+  const compById = useMemo(
+    () => new Map(data!.components.map((c) => [c.id, c])),
+    [data]
+  );
+
+  useEffect(() => {
+    setDraft(draftFromItem(item));
+  }, [item.id, item.laborHours, item.marginPct, item.discountPct]);
+
+  const quote = useMemo(
+    () =>
+      quoteMenuItem(
+        item,
+        compById,
+        ingById,
+        data!.settings,
+        draft,
+        data!.packagingSupplies,
+        data!.categoryPackaging
+      ),
+    [item, draft, compById, ingById, data]
+  );
+
+  const dirty =
+    draft.laborHours !== item.laborHours ||
+    draft.marginPct !== item.marginPct ||
+    draft.discountPct !== item.discountPct;
+
+  async function commit() {
+    setCommitting(true);
+    try {
+      await repo.upsertMenuItem({
+        ...item,
+        laborHours: draft.laborHours,
+        marginPct: draft.marginPct,
+        discountPct: draft.discountPct,
+      });
+      await refresh();
+    } finally {
+      setCommitting(false);
+    }
+  }
+
+  return (
+    <div className="card pricer-current-card">
+      <p className="eyebrow">{item.category}</p>
+      <h3 style={{ margin: "2px 0 0" }}>{item.name}</h3>
+
+      <h4>Materials</h4>
+      <p style={{ margin: "4px 0" }}>
+        <strong>{money(quote.materials)}</strong>
+        <span className="muted">
+          {" "}
+          for {quote.yieldAmount} {quote.displayUnit}
+        </span>
+      </p>
+      <ul style={{ listStyle: "none", padding: 0, margin: "0 0 10px" }}>
+        {quote.materialsParts.map((p) => (
+          <li key={p.name} className="note-inline">
+            {p.name}: {money(p.batchCost)}
+          </li>
+        ))}
+      </ul>
+
+      <h4>Packaging</h4>
+      <p style={{ margin: "4px 0" }}>
+        <strong>{money(quote.packaging)}</strong>
+        <span className="muted">
+          {" "}
+          · {quote.yieldAmount}× {item.category} kit
+          {quote.packCostPerUnit > 0 ? ` (${money(quote.packCostPerUnit)}/unit)` : ""}
+        </span>
+      </p>
+      <ul style={{ listStyle: "none", padding: 0, margin: "0 0 10px" }}>
+        {quote.packagingParts.map((p) => (
+          <li key={p.name} className="note-inline">
+            {p.qty}× {p.name}: {money(p.lineCost)}
+          </li>
+        ))}
+        {quote.packagingKitMissing && (
+          <li className="note-inline">No kit for this category</li>
+        )}
+      </ul>
+
+      <h4>Labor &amp; overrides</h4>
+      <div className="pricer-current-fields">
+        <label>
+          Labor hours
+          <input
+            type="number"
+            min={0}
+            step="0.25"
+            value={draft.laborHours ?? ""}
+            placeholder="not set"
+            onChange={(e) =>
+              setDraft({
+                ...draft,
+                laborHours:
+                  e.target.value === "" ? null : Math.max(0, Number(e.target.value) || 0),
+              })
+            }
+          />
+        </label>
+        <label>
+          Margin % {draft.marginPct == null ? "(default)" : "(override)"}
+          <input
+            type="number"
+            min={0}
+            max={99}
+            step="1"
+            value={
+              draft.marginPct == null ? "" : Number((draft.marginPct * 100).toFixed(4))
+            }
+            placeholder={pctLabel(data!.settings.defaultMarginPct)}
+            onChange={(e) =>
+              setDraft({
+                ...draft,
+                marginPct:
+                  e.target.value === ""
+                    ? null
+                    : Math.min(0.99, Math.max(0, Number(e.target.value) || 0) / 100),
+              })
+            }
+          />
+        </label>
+        <label>
+          Discount % {draft.discountPct == null ? "(default)" : "(override)"}
+          <input
+            type="number"
+            min={0}
+            max={100}
+            step="1"
+            value={
+              draft.discountPct == null
+                ? ""
+                : Number((draft.discountPct * 100).toFixed(4))
+            }
+            placeholder={pctLabel(data!.settings.defaultDiscountPct)}
+            onChange={(e) =>
+              setDraft({
+                ...draft,
+                discountPct:
+                  e.target.value === ""
+                    ? null
+                    : Math.min(1, Math.max(0, Number(e.target.value) || 0) / 100),
+              })
+            }
+          />
+        </label>
+      </div>
+      <div className="pricer-chip-row">
+        <button
+          type="button"
+          className="btn ghost xs"
+          onClick={() => setDraft({ ...draft, laborHours: 0 })}
+        >
+          Zero labor
+        </button>
+        <button
+          type="button"
+          className="btn ghost xs"
+          onClick={() => setDraft({ ...draft, marginPct: 0 })}
+        >
+          Zero margin
+        </button>
+        <button
+          type="button"
+          className="btn ghost xs"
+          onClick={() => setDraft({ ...draft, discountPct: 0 })}
+        >
+          Zero discount
+        </button>
+        <button
+          type="button"
+          className="btn ghost xs"
+          onClick={() => setDraft({ ...draft, marginPct: null, discountPct: null })}
+        >
+          Clear overrides
+        </button>
+      </div>
+
+      <h4>Breakdown</h4>
+      <table>
+        <tbody>
+          <tr>
+            <td>Materials</td>
+            <td className="num">{money(quote.materials)}</td>
+          </tr>
+          <tr>
+            <td>Packaging</td>
+            <td className="num">{money(quote.packaging)}</td>
+          </tr>
+          <tr>
+            <td>
+              Labor
+              {quote.laborHours != null
+                ? ` (${quote.laborHours} h × ${money(data!.settings.hourlyRate)})`
+                : ""}
+            </td>
+            <td className="num">{money(quote.labor)}</td>
+          </tr>
+          <tr>
+            <td>Base cost</td>
+            <td className="num">{money(quote.baseCost)}</td>
+          </tr>
+          <tr>
+            <td>
+              After margin ({pctLabel(quote.effectiveMarginPct)}
+              {quote.marginInherited ? ", default" : ""})
+            </td>
+            <td className="num">{money(quote.afterMargin)}</td>
+          </tr>
+          <tr>
+            <td>
+              After discount ({pctLabel(quote.effectiveDiscountPct)}
+              {quote.discountInherited ? ", default" : ""})
+            </td>
+            <td className="num">{money(quote.afterDiscount)}</td>
+          </tr>
+          <tr>
+            <td>Tax ({pctLabel(quote.taxPct)})</td>
+            <td className="num">{money(quote.taxAmount)}</td>
+          </tr>
+          <tr>
+            <td>
+              <strong className="pricer-retail-label">
+                Suggested retail
+                {quote.warnings.length > 0 && (
+                  <span
+                    className="warn-tip"
+                    tabIndex={0}
+                    aria-label={`Warnings: ${quote.warnings.join("; ")}`}
+                  >
+                    <WarnIcon />
+                    <span className="warn-tip-panel" role="tooltip">
+                      {quote.warnings.map((w) => (
+                        <span key={w}>{w}</span>
+                      ))}
+                    </span>
+                  </span>
+                )}
+              </strong>
+            </td>
+            <td className="num">
+              <strong>
+                {formatRetailForBatch(
+                  quote.suggestedRetail,
+                  quote.yieldAmount,
+                  quote.displayUnit
+                )}
+              </strong>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+        <button className="btn" disabled={!dirty || committing} onClick={() => void commit()}>
+          {committing ? "Saving…" : "Commit to item"}
+        </button>
+        <button
+          className="btn ghost"
+          disabled={!dirty}
+          onClick={() => setDraft(draftFromItem(item))}
+        >
+          Reset draft
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export function PricerPage() {
@@ -36,7 +361,7 @@ export function PricerPage() {
   const [settingsDraft, setSettingsDraft] = useState<BakerySettings>(data!.settings);
   const [savingDefaults, setSavingDefaults] = useState(false);
   const [committing, setCommitting] = useState(false);
-  const [publishing, setPublishing] = useState(false);
+  const [priceCurrentMenu, setPriceCurrentMenu] = useState(false);
   const [showIngredientPeek, setShowIngredientPeek] = useState(false);
 
   const ingById = useMemo(
@@ -126,20 +451,20 @@ export function PricerPage() {
     }
   }
 
-  async function setPublishToSite(publishToSite: boolean) {
-    if (!selected || selected.publishToSite === publishToSite) return;
-    setPublishing(true);
-    try {
-      await repo.upsertMenuItem({ ...selected, publishToSite });
-      await refresh();
-    } finally {
-      setPublishing(false);
-    }
-  }
-
   function resetDraft() {
     if (selected) setDraft(draftFromItem(selected));
   }
+
+  const currentMenuItems = useMemo(() => {
+    return data!.menu.entries
+      .filter((e) => e.quantity > 0)
+      .map((e) => {
+        const item = data!.menuItems.find((m) => m.id === e.menuItemId);
+        if (!item) return null;
+        return { entry: e, item };
+      })
+      .filter((row): row is NonNullable<typeof row> => row != null);
+  }, [data]);
 
   const defaultsDirty =
     settingsDraft.hourlyRate !== data!.settings.hourlyRate ||
@@ -164,6 +489,35 @@ export function PricerPage() {
         <Link to="/library">Library</Link>.
       </p>
 
+      {priceCurrentMenu ? (
+        <>
+          <button
+            type="button"
+            className="text-action"
+            style={{ marginBottom: 14 }}
+            onClick={() => setPriceCurrentMenu(false)}
+          >
+            <BackArrowIcon />
+            Back to item selector
+          </button>
+          {currentMenuItems.length === 0 ? (
+            <div className="card" style={{ textAlign: "center" }}>
+              <h3>Nothing on this week’s menu yet.</h3>
+              <p className="muted">Add items in Menu Builder, then come back to price them.</p>
+              <Link className="btn" to="/">
+                Go to Menu Builder
+              </Link>
+            </div>
+          ) : (
+            <div className="pricer-current-carousel">
+              {currentMenuItems.map(({ item }) => (
+                <CurrentMenuPriceCard key={item.id} item={item} />
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Bakery defaults</h3>
         <p className="note-inline">
@@ -262,6 +616,8 @@ export function PricerPage() {
         </div>
       </div>
 
+      <div className="menu-builder-shell">
+        <div className="menu-builder-main">
       <div className="grid grid-2" style={{ alignItems: "start" }}>
         <div className="card">
           <h3 style={{ marginTop: 0 }}>Menu items</h3>
@@ -551,27 +907,6 @@ export function PricerPage() {
                   Reset draft
                 </button>
               </div>
-
-              <div
-                className="check-row"
-                style={{
-                  marginTop: 14,
-                  borderBottom: "none",
-                  opacity: selected.isPlaceholder ? 0.5 : 1,
-                }}
-              >
-                <input
-                  type="checkbox"
-                  id={`pricer-publish-${selected.id}`}
-                  checked={selected.publishToSite}
-                  disabled={selected.isPlaceholder || publishing}
-                  onChange={(e) => void setPublishToSite(e.target.checked)}
-                />
-                <label htmlFor={`pricer-publish-${selected.id}`}>
-                  Publish to site
-                  {publishing ? "…" : selected.publishToSite ? " (on farmers market page)" : ""}
-                </label>
-              </div>
             </>
           )}
         </div>
@@ -616,6 +951,22 @@ export function PricerPage() {
             <p className="note-inline">Showing first 40 of {data!.ingredients.length}.</p>
           )}
         </div>
+      )}
+          </div>
+          <aside className="menu-builder-gutter no-print">
+            <div className="menu-builder-actions">
+              <button
+                type="button"
+                className="text-action"
+                onClick={() => setPriceCurrentMenu(true)}
+              >
+                <PriceTagIcon />
+                Price Current Menu
+              </button>
+            </div>
+          </aside>
+        </div>
+        </>
       )}
     </>
   );

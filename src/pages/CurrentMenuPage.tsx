@@ -24,6 +24,22 @@ export function CurrentMenuPage() {
     await refresh();
   }
 
+  async function setPublishToSite(id: string, publishToSite: boolean) {
+    const item = data!.menuItems.find((m) => m.id === id);
+    if (!item || item.publishToSite === publishToSite) return;
+    await repo.upsertMenuItem({ ...item, publishToSite });
+    await refresh();
+  }
+
+  async function setBrandName(id: string, brandName: string) {
+    const item = data!.menuItems.find((m) => m.id === id);
+    if (!item) return;
+    const next = brandName.trim() || item.name;
+    if (item.brandName === next) return;
+    await repo.upsertMenuItem({ ...item, brandName: next });
+    await refresh();
+  }
+
   async function clearAll() {
     if (confirm("Clear the entire weekly menu?")) {
       await repo.clearMenu();
@@ -51,7 +67,9 @@ export function CurrentMenuPage() {
               <thead>
                 <tr>
                   <th>Item</th>
+                  <th className="no-print">With Title</th>
                   <th className="num">Batches</th>
+                  <th className="num no-print">Publish</th>
                   <th className="num no-print">Remove</th>
                 </tr>
               </thead>
@@ -74,6 +92,32 @@ export function CurrentMenuPage() {
                             <span className="pill warn">placeholder</span>
                           </>
                         )}
+                        {item?.publishToSite && (
+                          <>
+                            {" "}
+                            <span className="pill rose">on site</span>
+                          </>
+                        )}
+                      </td>
+                      <td className="no-print">
+                        {item ? (
+                          <input
+                            type="text"
+                            defaultValue={item.brandName}
+                            key={`${item.id}-${item.brandName}`}
+                            placeholder={item.name}
+                            aria-label={`Public title for ${item.name}`}
+                            onBlur={(ev) => void setBrandName(item.id, ev.target.value)}
+                            onKeyDown={(ev) => {
+                              if (ev.key === "Enter") {
+                                (ev.target as HTMLInputElement).blur();
+                              }
+                            }}
+                            style={{ width: "100%", minWidth: 160 }}
+                          />
+                        ) : (
+                          "—"
+                        )}
                       </td>
                       <td className="num">
                         <input
@@ -83,6 +127,25 @@ export function CurrentMenuPage() {
                           onChange={(ev) => setQty(e.menuItemId, Number(ev.target.value) || 0)}
                           style={{ width: 84, textAlign: "right" }}
                         />
+                      </td>
+                      <td className="num no-print">
+                        {item ? (
+                          <input
+                            type="checkbox"
+                            id={`publish-menu-${item.id}`}
+                            checked={item.publishToSite}
+                            disabled={item.isPlaceholder}
+                            title={
+                              item.isPlaceholder
+                                ? "Placeholders cannot be published"
+                                : "Publish to farmers market page"
+                            }
+                            onChange={(ev) => void setPublishToSite(item.id, ev.target.checked)}
+                            style={{ width: 18, height: 18, accentColor: "var(--berry)" }}
+                          />
+                        ) : (
+                          "—"
+                        )}
                       </td>
                       <td className="num no-print">
                         <button className="btn ghost sm" onClick={() => setQty(e.menuItemId, 0)}>

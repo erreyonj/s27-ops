@@ -1407,6 +1407,20 @@ export const seedComponents: ItemComponent[] = [
     ],
   },
   {
+    id: "comp-vanilla-bean-cream-cheese",
+    name: "Vanilla Bean Cream Cheese",
+    category: "frosting",
+    yieldAmount: 1,
+    yieldUnit: "batch",
+    notes: "Fluffy Vanilla Frosting with vanilla bean paste",
+    lines: [
+      { ingredientId: "unsalted-butter", qtyText: "2 cups", detail: "4 sticks · 452 g", grams: 452, count: null, tsp: null, sort: 0 },
+      { ingredientId: "powdered-sugar", qtyText: "6 cups", detail: "sifted · ≈720 g", grams: 720, count: null, tsp: null, sort: 1 },
+      { ingredientId: "vanilla-bean-paste", qtyText: "1 tsp", detail: null, grams: null, count: null, tsp: 1, sort: 2 },
+      { ingredientId: "kosher-salt", qtyText: "pinch", detail: "≈1/16 tsp", grams: null, count: null, tsp: 0.06, sort: 3 },
+    ],
+  },
+  {
     id: "comp-applesauce-spice-cake",
     name: "Apple Spice Cake",
     category: "cake",
