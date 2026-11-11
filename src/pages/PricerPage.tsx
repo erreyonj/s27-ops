@@ -4,6 +4,7 @@ import { useApp } from "../state/AppState";
 import {
   defaultLaborHoursForItem,
   formatRetailForBatch,
+  formatRetailPerUnit,
   menuItemCost,
   quoteMenuItem,
   type QuoteDraft,
@@ -310,7 +311,7 @@ function CurrentMenuPriceCard({ item }: { item: MenuItem }) {
           <tr>
             <td>
               <strong className="pricer-retail-label">
-                Suggested retail
+                Suggested wholesale
                 {quote.warnings.length > 0 && (
                   <span
                     className="warn-tip"
@@ -330,6 +331,20 @@ function CurrentMenuPriceCard({ item }: { item: MenuItem }) {
             <td className="num">
               <strong>
                 {formatRetailForBatch(
+                  quote.suggestedRetail,
+                  quote.yieldAmount,
+                  quote.displayUnit
+                )}
+              </strong>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <strong className="pricer-retail-label">Suggested retail</strong>
+            </td>
+            <td className="num">
+              <strong>
+                {formatRetailPerUnit(
                   quote.suggestedRetail,
                   quote.yieldAmount,
                   quote.displayUnit
@@ -922,11 +937,25 @@ export function PricerPage() {
                   </tr>
                   <tr>
                     <td>
-                      <strong>Suggested retail</strong>
+                      <strong>Suggested wholesale</strong>
                     </td>
                     <td className="num">
                       <strong>
                         {formatRetailForBatch(
+                          quote.suggestedRetail,
+                          quote.yieldAmount,
+                          quote.displayUnit
+                        )}
+                      </strong>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <strong>Suggested retail</strong>
+                    </td>
+                    <td className="num">
+                      <strong>
+                        {formatRetailPerUnit(
                           quote.suggestedRetail,
                           quote.yieldAmount,
                           quote.displayUnit

@@ -500,7 +500,7 @@ export function quoteMenuItem(
   };
 }
 
-/** Retail label for one batch, e.g. "$7.80 for 6 cookies". */
+/** Full-order / wholesale label for one batch, e.g. "$34.11 for 6 cookies". */
 export function formatRetailForBatch(
   amount: number,
   yieldAmount: number,
@@ -509,4 +509,24 @@ export function formatRetailForBatch(
   const unit = yieldUnit.trim() || "batch";
   const n = yieldAmount > 0 ? yieldAmount : 1;
   return `$${amount.toFixed(2)} for ${n} ${unit}`;
+}
+
+/** Singularize a yield unit for "per cookie" style labels. */
+export function singularYieldUnit(yieldUnit: string): string {
+  const unit = yieldUnit.trim() || "unit";
+  if (/ies$/i.test(unit)) return unit.replace(/ies$/i, "y");
+  if (/ses$/i.test(unit)) return unit.replace(/es$/i, "");
+  if (/s$/i.test(unit) && !/ss$/i.test(unit)) return unit.replace(/s$/i, "");
+  return unit;
+}
+
+/** Per-unit retail from wholesale ÷ yield, e.g. "$5.68 per cookie". */
+export function formatRetailPerUnit(
+  wholesale: number,
+  yieldAmount: number,
+  yieldUnit: string
+): string {
+  const n = yieldAmount > 0 ? yieldAmount : 1;
+  const per = wholesale / n;
+  return `$${per.toFixed(2)} per ${singularYieldUnit(yieldUnit)}`;
 }
