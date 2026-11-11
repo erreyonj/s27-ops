@@ -1,5 +1,9 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import {
+  ComponentLinesModal,
+  PencilIcon,
+} from "../components/ComponentLinesModal";
 import { useApp } from "../state/AppState";
 import { scaleQtyText } from "../domain/scaling";
 import { packagingUnitCost, unitCost } from "../domain/aggregate";
@@ -8,7 +12,12 @@ import {
   CATEGORIES,
   type Category,
   type CategoryPackagingLine,
+  type ItemComponent,
 } from "../domain/types";
+
+type EditTarget =
+  | { kind: "component"; id: string }
+  | { kind: "item"; id: string };
 
 function money(n: number): string {
   return `$${n.toFixed(2)}`;
@@ -33,6 +42,7 @@ export function LibraryPage() {
   const [pkgDraft, setPkgDraft] = useState<Record<string, { price: string; qty: string }>>({});
   const [kitCategory, setKitCategory] = useState<Category>("dough");
   const [kitSaving, setKitSaving] = useState(false);
+  const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
 
   const ingName = useMemo(() => {
     const m = new Map(data!.ingredients.map((i) => [i.id, i.name]));
@@ -158,6 +168,30 @@ export function LibraryPage() {
     }
   }
 
+  const editModal = useMemo(() => {
+    if (!editTarget) return null;
+    if (editTarget.kind === "component") {
+      const c = compById.get(editTarget.id);
+      if (!c) return null;
+      return {
+        title: c.name,
+        components: [c] as ItemComponent[],
+        sharedNote: false,
+      };
+    }
+    const item = data!.menuItems.find((m) => m.id === editTarget.id);
+    if (!item) return null;
+    const comps = item.components
+      .map((ref) => compById.get(ref.componentId))
+      .filter((c): c is ItemComponent => !!c);
+    if (comps.length === 0) return null;
+    return {
+      title: item.name,
+      components: comps,
+      sharedNote: true,
+    };
+  }, [editTarget, compById, data]);
+
   return (
     <>
       <p className="eyebrow">Library</p>
@@ -241,11 +275,23 @@ export function LibraryPage() {
             const open = !!expanded[c.id];
             const legacy = legacyPriceNote(c.notes);
             return (
-              <div className="card" key={c.id} style={{ padding: 14 }}>
+              <div className="card library-card" key={c.id} style={{ padding: 14 }}>
+                {open && (
+                  <button
+                    type="button"
+                    className="library-card-edit no-print"
+                    aria-label="Edit ingredients"
+                    onClick={() => setEditTarget({ kind: "component", id: c.id })}
+                  >
+                    <PencilIcon />
+                  </button>
+                )}
                 <p className="eyebrow" style={{ marginBottom: 4 }}>
                   {c.category}
                 </p>
-                <h3 style={{ margin: "0 0 6px", fontSize: "1.05rem" }}>{c.name}</h3>
+                <h3 style={{ margin: "0 0 6px", fontSize: "1.05rem", paddingRight: open ? 36 : 0 }}>
+                  {c.name}
+                </h3>
                 <p className="note-inline" style={{ margin: 0 }}>
                   1 batch → {c.yieldAmount} {c.yieldUnit}
                   {open && scale !== 1 ? ` (showing ${scale} batches)` : ""}
@@ -308,11 +354,21 @@ export function LibraryPage() {
               .map((ref) => legacyPriceNote(compById.get(ref.componentId)?.notes ?? null))
               .filter((n): n is string => !!n);
             return (
-              <div className="card" key={m.id} style={{ padding: 14 }}>
+              <div className="card library-card" key={m.id} style={{ padding: 14 }}>
+                {open && (
+                  <button
+                    type="button"
+                    className="library-card-edit no-print"
+                    aria-label="Edit ingredients"
+                    onClick={() => setEditTarget({ kind: "item", id: m.id })}
+                  >
+                    <PencilIcon />
+                  </button>
+                )}
                 <p className="eyebrow" style={{ marginBottom: 4 }}>
                   {m.category}
                 </p>
-                <div style={{ display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap", paddingRight: open ? 36 : 0 }}>
                   <h3 style={{ margin: 0, fontSize: "1.05rem" }}>{m.name}</h3>
                   {m.isPrimary && <span className="pill rose">primary</span>}
                   {m.isPlaceholder && <span className="pill warn">placeholder</span>}
@@ -610,6 +666,15 @@ export function LibraryPage() {
             </ul>
           </div>
         </>
+      )}
+
+      {editModal && (
+        <ComponentLinesModal
+          title={editModal.title}
+          components={editModal.components}
+          sharedNote={editModal.sharedNote}
+          onClose={() => setEditTarget(null)}
+        />
       )}
     </>
   );

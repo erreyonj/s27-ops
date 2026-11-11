@@ -528,6 +528,213 @@ tr:last-child td { border-bottom: none; }
   justify-content: space-between;
   gap: 12px;
 }
+.modal-panel-edit {
+  width: min(960px, 100%);
+  max-height: min(90vh, 860px);
+}
+.modal-footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.modal-alert {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+.modal-alert.info {
+  background: color-mix(in srgb, var(--berry) 8%, var(--paper));
+  border-color: color-mix(in srgb, var(--berry) 28%, var(--line));
+  color: var(--ink);
+}
+.modal-alert.warn {
+  background: color-mix(in srgb, var(--gold) 18%, var(--paper));
+  border-color: color-mix(in srgb, var(--gold) 45%, var(--line));
+  color: var(--ink);
+}
+.modal-alert.sm {
+  margin-top: 6px;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+}
+.discard-alert {
+  margin-top: 14px;
+}
+
+.library-card {
+  position: relative;
+}
+.library-card-edit {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.library-card-edit:hover {
+  color: var(--ink);
+  border-color: var(--berry);
+  background: color-mix(in srgb, var(--berry) 8%, var(--paper));
+}
+
+.edit-lines-scroller {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.edit-comp-section {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  background: color-mix(in srgb, var(--cream) 55%, var(--paper));
+}
+.edit-comp-heading {
+  margin-bottom: 8px;
+}
+.edit-lines-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.edit-line-row {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+.edit-line-main {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.4fr) minmax(120px, 1fr) minmax(110px, 0.9fr) minmax(90px, 0.7fr);
+  gap: 8px;
+  align-items: end;
+}
+.edit-line-cost {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+.edit-line-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.edit-comp-toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.ing-picker {
+  position: relative;
+  min-width: 0;
+}
+.ing-picker-trigger {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+}
+.ing-picker-trigger:hover {
+  border-color: var(--berry);
+}
+.ing-picker-dropdown {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 8px;
+}
+.ing-picker-list {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+  max-height: 220px;
+  overflow: auto;
+}
+.ing-picker-list button {
+  display: flex;
+  width: 100%;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  padding: 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+}
+.ing-picker-list button:hover,
+.ing-picker-list button.active {
+  background: color-mix(in srgb, var(--berry) 10%, transparent);
+}
+
+.new-ing-form {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px dashed var(--line);
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.new-ing-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 10px;
+}
+.new-ing-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+@media (max-width: 800px) {
+  .edit-line-main,
+  .new-ing-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
 .comp-ing-list {
   list-style: none;
