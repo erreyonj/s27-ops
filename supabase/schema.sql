@@ -78,6 +78,8 @@ create table if not exists bakery_settings (
   sales_tax_pct numeric not null default 0,
   default_margin_pct numeric not null default 0.35,
   default_discount_pct numeric not null default 0,
+  venmo_fee_pct numeric not null default 0.0229,
+  venmo_fee_fixed numeric not null default 0.09,
   updated_at timestamptz not null default now()
 );
 

@@ -42,6 +42,8 @@ function toSettings(r: any | null | undefined): BakerySettings {
     defaultDiscountPct: Number(
       r.default_discount_pct ?? DEFAULT_BAKERY_SETTINGS.defaultDiscountPct
     ),
+    venmoFeePct: Number(r.venmo_fee_pct ?? DEFAULT_BAKERY_SETTINGS.venmoFeePct),
+    venmoFeeFixed: Number(r.venmo_fee_fixed ?? DEFAULT_BAKERY_SETTINGS.venmoFeeFixed),
   };
 }
 
@@ -339,6 +341,8 @@ export class SupabaseRepository implements Repository {
       sales_tax_pct: settings.salesTaxPct,
       default_margin_pct: settings.defaultMarginPct,
       default_discount_pct: settings.defaultDiscountPct,
+      venmo_fee_pct: settings.venmoFeePct,
+      venmo_fee_fixed: settings.venmoFeeFixed,
       updated_at: new Date().toISOString(),
     });
     if (error) throw error;
@@ -370,6 +374,8 @@ export class SupabaseRepository implements Repository {
       sales_tax_pct: DEFAULT_BAKERY_SETTINGS.salesTaxPct,
       default_margin_pct: DEFAULT_BAKERY_SETTINGS.defaultMarginPct,
       default_discount_pct: DEFAULT_BAKERY_SETTINGS.defaultDiscountPct,
+      venmo_fee_pct: DEFAULT_BAKERY_SETTINGS.venmoFeePct,
+      venmo_fee_fixed: DEFAULT_BAKERY_SETTINGS.venmoFeeFixed,
     });
     if (settingsRes.error) throw settingsRes.error;
 

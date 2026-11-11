@@ -109,6 +109,10 @@ export interface BakerySettings {
   salesTaxPct: number;
   defaultMarginPct: number;
   defaultDiscountPct: number;
+  /** Venmo / card pass-through fee rate (e.g. 0.0229 = 2.29%). */
+  venmoFeePct: number;
+  /** Venmo / card pass-through fixed fee in dollars (e.g. 0.09). */
+  venmoFeeFixed: number;
 }
 
 /** Purchased packaging SKU (bag, box, label roll). */
@@ -155,6 +159,8 @@ export const DEFAULT_BAKERY_SETTINGS: BakerySettings = {
   salesTaxPct: 0,
   defaultMarginPct: 0.35,
   defaultDiscountPct: 0,
+  venmoFeePct: 0.0229,
+  venmoFeeFixed: 0.09,
 };
 
 /** Aggregated grocery output. */

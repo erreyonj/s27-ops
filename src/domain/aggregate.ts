@@ -327,6 +327,10 @@ export interface MenuItemQuote {
   afterDiscount: number;
   taxPct: number;
   taxAmount: number;
+  preFeeRetail: number;
+  venmoFeePct: number;
+  venmoFeeFixed: number;
+  venmoFeeAmount: number;
   suggestedRetail: number;
   yieldAmount: number;
   displayUnit: string;
@@ -336,6 +340,7 @@ export interface MenuItemQuote {
 /**
  * Excel Cake Builder–style quote for one batch:
  * materials + packaging + labor → / (1 - margin) → × (1 - discount) → × (1 + tax)
+ * → Venmo gross-up (preFee + fixed) / (1 - feePct)
  */
 export function quoteMenuItem(
   item: MenuItem,
@@ -378,8 +383,16 @@ export function quoteMenuItem(
       : baseCost;
   const afterDiscount = afterMargin * (1 - Math.min(Math.max(effectiveDiscountPct, 0), 1));
   const taxPct = settings.salesTaxPct;
-  const suggestedRetail = afterDiscount * (1 + Math.max(taxPct, 0));
-  const taxAmount = suggestedRetail - afterDiscount;
+  const preFeeRetail = afterDiscount * (1 + Math.max(taxPct, 0));
+  const taxAmount = preFeeRetail - afterDiscount;
+
+  const venmoFeePct = Math.min(Math.max(settings.venmoFeePct ?? 0, 0), 0.99);
+  const venmoFeeFixed = Math.max(settings.venmoFeeFixed ?? 0, 0);
+  const suggestedRetail =
+    venmoFeePct > 0
+      ? (preFeeRetail + venmoFeeFixed) / (1 - venmoFeePct)
+      : preFeeRetail + venmoFeeFixed;
+  const venmoFeeAmount = suggestedRetail - preFeeRetail;
 
   const warnings: string[] = [];
   if (mats.missing.length) {
@@ -417,6 +430,11 @@ export function quoteMenuItem(
   }
   if (taxPct === 0) {
     warnings.push("Sales tax is 0%");
+  }
+  if (venmoFeePct > 0 || venmoFeeFixed > 0) {
+    warnings.push(
+      `Venmo fee pass-through ${(venmoFeePct * 100).toFixed(2)}% + $${venmoFeeFixed.toFixed(2)}`
+    );
   }
 
   const displayUnit = (item.yieldUnit || "batch").trim() || "batch";
@@ -471,6 +489,10 @@ export function quoteMenuItem(
     afterDiscount,
     taxPct,
     taxAmount,
+    preFeeRetail,
+    venmoFeePct,
+    venmoFeeFixed,
+    venmoFeeAmount,
     suggestedRetail,
     yieldAmount: yieldAmt,
     displayUnit,

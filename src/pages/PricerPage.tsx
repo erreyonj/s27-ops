@@ -303,6 +303,12 @@ function CurrentMenuPriceCard({ item }: { item: MenuItem }) {
           </tr>
           <tr>
             <td>
+              Venmo ({(quote.venmoFeePct * 100).toFixed(2)}% + {money(quote.venmoFeeFixed)})
+            </td>
+            <td className="num">{money(quote.venmoFeeAmount)}</td>
+          </tr>
+          <tr>
+            <td>
               <strong className="pricer-retail-label">
                 Suggested retail
                 {quote.warnings.length > 0 && (
@@ -470,7 +476,9 @@ export function PricerPage() {
     settingsDraft.hourlyRate !== data!.settings.hourlyRate ||
     settingsDraft.salesTaxPct !== data!.settings.salesTaxPct ||
     settingsDraft.defaultMarginPct !== data!.settings.defaultMarginPct ||
-    settingsDraft.defaultDiscountPct !== data!.settings.defaultDiscountPct;
+    settingsDraft.defaultDiscountPct !== data!.settings.defaultDiscountPct ||
+    settingsDraft.venmoFeePct !== data!.settings.venmoFeePct ||
+    settingsDraft.venmoFeeFixed !== data!.settings.venmoFeeFixed;
 
   const itemDirty =
     selected &&
@@ -485,8 +493,8 @@ export function PricerPage() {
       <h1>Quote a menu item.</h1>
       <p className="muted">
         Materials and packaging roll up from recipes and category kits. Add labor hours, then
-        apply bakery margin, discount, and tax. Ingredient and packaging pack prices live in{" "}
-        <Link to="/library">Library</Link>.
+        apply bakery margin, discount, tax, and Venmo fee pass-through. Ingredient and packaging
+        pack prices live in <Link to="/library">Library</Link>.
       </p>
 
       {priceCurrentMenu ? (
@@ -521,8 +529,9 @@ export function PricerPage() {
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Bakery defaults</h3>
         <p className="note-inline">
-          Hourly rate and sales tax are global. Default margin / discount apply when a menu
-          item has no override (null).
+          Hourly rate, sales tax, and Venmo fee are global. Default margin / discount apply when
+          a menu item has no override (null). Venmo is grossed up on every quote so the fee is
+          passed through even for cash.
         </p>
         <div
           style={{
@@ -596,6 +605,40 @@ export function PricerPage() {
                     1,
                     Math.max(0, Number(e.target.value) || 0) / 100
                   ),
+                })
+              }
+            />
+          </label>
+          <label>
+            Venmo fee (%)
+            <input
+              type="number"
+              min={0}
+              max={99}
+              step="0.01"
+              value={Number((settingsDraft.venmoFeePct * 100).toFixed(4))}
+              onChange={(e) =>
+                setSettingsDraft({
+                  ...settingsDraft,
+                  venmoFeePct: Math.min(
+                    0.99,
+                    Math.max(0, Number(e.target.value) || 0) / 100
+                  ),
+                })
+              }
+            />
+          </label>
+          <label>
+            Venmo fixed ($)
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={settingsDraft.venmoFeeFixed}
+              onChange={(e) =>
+                setSettingsDraft({
+                  ...settingsDraft,
+                  venmoFeeFixed: Math.max(0, Number(e.target.value) || 0),
                 })
               }
             />
@@ -869,6 +912,13 @@ export function PricerPage() {
                   <tr>
                     <td>Tax ({pctLabel(quote.taxPct)})</td>
                     <td className="num">{money(quote.taxAmount)}</td>
+                  </tr>
+                  <tr>
+                    <td>
+                      Venmo ({(quote.venmoFeePct * 100).toFixed(2)}% +{" "}
+                      {money(quote.venmoFeeFixed)})
+                    </td>
+                    <td className="num">{money(quote.venmoFeeAmount)}</td>
                   </tr>
                   <tr>
                     <td>
