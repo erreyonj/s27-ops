@@ -4,6 +4,7 @@ import type {
   BaseUnit,
   ComponentLine,
   ItemComponent,
+  MenuItem,
   RawIngredient,
 } from "../domain/types";
 import { useApp } from "../state/AppState";
@@ -20,8 +21,10 @@ type DraftLine = {
   tsp: string;
 };
 
-type DraftComponent = {
-  id: string;
+type DraftSlot = {
+  key: string;
+  componentId: string;
+  scale: string;
   lines: DraftLine[];
 };
 
@@ -34,7 +37,7 @@ function slugify(name: string): string {
 }
 
 function newKey(): string {
-  return `line-${Math.random().toString(36).slice(2, 10)}`;
+  return `k-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function lineToDraft(line: ComponentLine): DraftLine {
@@ -61,17 +64,40 @@ function emptyLine(): DraftLine {
   };
 }
 
-function snapshotFromComponents(components: ItemComponent[]): DraftComponent[] {
-  return components.map((c) => ({
-    id: c.id,
-    lines: c.lines.map(lineToDraft),
-  }));
+function slotFromComponent(comp: ItemComponent, scale = 1): DraftSlot {
+  return {
+    key: newKey(),
+    componentId: comp.id,
+    scale: String(scale),
+    lines: comp.lines.map(lineToDraft),
+  };
 }
 
-function serializeDraft(draft: DraftComponent[]): string {
+function snapshotSlots(
+  components: ItemComponent[],
+  menuItem: MenuItem | null | undefined,
+  library: Map<string, ItemComponent>
+): DraftSlot[] {
+  if (menuItem) {
+    return menuItem.components.map((ref) => {
+      const comp = library.get(ref.componentId);
+      if (comp) return slotFromComponent(comp, ref.scale);
+      return {
+        key: newKey(),
+        componentId: ref.componentId,
+        scale: String(ref.scale),
+        lines: [],
+      };
+    });
+  }
+  return components.map((c) => slotFromComponent(c, 1));
+}
+
+function serializeDraft(draft: DraftSlot[], includeComposition: boolean): string {
   return JSON.stringify(
     draft.map((c) => ({
-      id: c.id,
+      componentId: includeComposition ? c.componentId : undefined,
+      scale: includeComposition ? c.scale : undefined,
       lines: c.lines.map((l) => ({
         ingredientId: l.ingredientId,
         qtyText: l.qtyText,
@@ -134,6 +160,26 @@ function validateLine(
   return null;
 }
 
+function linesEqual(a: ComponentLine[], b: DraftLine[]): boolean {
+  const left = a.map((l) => ({
+    ingredientId: l.ingredientId,
+    qtyText: l.qtyText,
+    detail: l.detail ?? "",
+    grams: l.grams != null ? String(l.grams) : "",
+    count: l.count != null ? String(l.count) : "",
+    tsp: l.tsp != null ? String(l.tsp) : "",
+  }));
+  const right = b.map((l) => ({
+    ingredientId: l.ingredientId,
+    qtyText: l.qtyText,
+    detail: l.detail,
+    grams: l.grams,
+    count: l.count,
+    tsp: l.tsp,
+  }));
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
 function PencilIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -148,25 +194,29 @@ function PencilIcon() {
   );
 }
 
-function IngredientPicker({
+function SearchPicker<T extends { id: string; name: string }>({
   value,
+  items,
   onChange,
-  ingredients,
+  placeholder,
+  secondary,
 }: {
   value: string;
+  items: T[];
   onChange: (id: string) => void;
-  ingredients: RawIngredient[];
+  placeholder: string;
+  secondary?: (item: T) => string;
 }) {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("");
   const wrapRef = useRef<HTMLDivElement>(null);
-  const selected = ingredients.find((i) => i.id === value);
+  const selected = items.find((i) => i.id === value);
 
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    if (!q) return ingredients;
-    return ingredients.filter((i) => i.name.toLowerCase().includes(q));
-  }, [ingredients, filter]);
+    if (!q) return items;
+    return items.filter((i) => i.name.toLowerCase().includes(q));
+  }, [items, filter]);
 
   useEffect(() => {
     if (!open) return;
@@ -189,8 +239,8 @@ function IngredientPicker({
           setFilter("");
         }}
       >
-        <span>{selected?.name ?? "Select ingredient…"}</span>
-        <span className="muted">{selected?.baseUnit ?? ""}</span>
+        <span>{selected?.name ?? placeholder}</span>
+        <span className="muted">{selected && secondary ? secondary(selected) : ""}</span>
       </button>
       {open && (
         <div className="ing-picker-dropdown">
@@ -202,24 +252,24 @@ function IngredientPicker({
             onChange={(e) => setFilter(e.target.value)}
           />
           <ul className="ing-picker-list">
-            {filtered.map((ing) => (
-              <li key={ing.id}>
+            {filtered.map((item) => (
+              <li key={item.id}>
                 <button
                   type="button"
-                  className={ing.id === value ? "active" : ""}
+                  className={item.id === value ? "active" : ""}
                   onClick={() => {
-                    onChange(ing.id);
+                    onChange(item.id);
                     setOpen(false);
                   }}
                 >
-                  {ing.name}
-                  <span className="muted">{ing.baseUnit}</span>
+                  {item.name}
+                  {secondary && <span className="muted">{secondary(item)}</span>}
                 </button>
               </li>
             ))}
             {filtered.length === 0 && (
               <li className="muted" style={{ padding: "10px 8px" }}>
-                No ingredients match.
+                No matches.
               </li>
             )}
           </ul>
@@ -341,39 +391,49 @@ export function ComponentLinesModal({
   components,
   title,
   sharedNote,
+  menuItem,
   onClose,
 }: {
   components: ItemComponent[];
   title: string;
   sharedNote?: boolean;
+  menuItem?: MenuItem | null;
   onClose: () => void;
 }) {
   const { data, repo, refresh } = useApp();
-  const [draft, setDraft] = useState(() => snapshotFromComponents(components));
-  const [baseline] = useState(() => serializeDraft(snapshotFromComponents(components)));
+  const editComposition = !!menuItem;
+
+  const libraryById = useMemo(
+    () => new Map(data!.components.map((c) => [c.id, c])),
+    [data]
+  );
+
+  const [draft, setDraft] = useState(() =>
+    snapshotSlots(components, menuItem, libraryById)
+  );
+  const [baseline] = useState(() =>
+    serializeDraft(snapshotSlots(components, menuItem, libraryById), editComposition)
+  );
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [newIngFor, setNewIngFor] = useState<{ componentId: string; lineKey: string } | null>(
+  const [newIngFor, setNewIngFor] = useState<{ slotKey: string; lineKey: string } | null>(
     null
   );
 
   const ingredients = data!.ingredients;
+  const allComponents = data!.components;
   const ingById = useMemo(
     () => new Map(ingredients.map((i) => [i.id, i])),
     [ingredients]
   );
-  const compById = useMemo(
-    () => new Map(components.map((c) => [c.id, c])),
-    [components]
-  );
 
-  const dirty = serializeDraft(draft) !== baseline;
+  const dirty = serializeDraft(draft, editComposition) !== baseline;
 
   const lineErrors = useMemo(() => {
     const map = new Map<string, string>();
-    for (const c of draft) {
-      for (const line of c.lines) {
+    for (const slot of draft) {
+      for (const line of slot.lines) {
         const err = validateLine(line, ingById);
         if (err) map.set(line.key, err);
       }
@@ -381,7 +441,21 @@ export function ComponentLinesModal({
     return map;
   }, [draft, ingById]);
 
-  const canSave = dirty && lineErrors.size === 0 && !saving;
+  const compositionError = useMemo(() => {
+    if (!editComposition) return null;
+    if (draft.length === 0) return "Add at least one component.";
+    const ids = draft.map((s) => s.componentId);
+    if (ids.some((id) => !id)) return "Every slot needs a component.";
+    if (new Set(ids).size !== ids.length) return "Duplicate components aren’t allowed.";
+    for (const slot of draft) {
+      const scale = Number(slot.scale);
+      if (!Number.isFinite(scale) || scale <= 0) return "Scale must be a positive number.";
+    }
+    return null;
+  }, [draft, editComposition]);
+
+  const canSave =
+    dirty && lineErrors.size === 0 && !compositionError && !saving;
 
   function requestClose() {
     if (dirty) {
@@ -413,61 +487,100 @@ export function ComponentLinesModal({
     return () => window.removeEventListener("keydown", onKey, true);
   }, [dirty, confirmDiscard, newIngFor, onClose]);
 
+  function touchDraft(updater: (prev: DraftSlot[]) => DraftSlot[]) {
+    setConfirmDiscard(false);
+    setDraft(updater);
+  }
+
   function updateLine(
-    componentId: string,
+    slotKey: string,
     lineKey: string,
     updater: (line: DraftLine) => DraftLine
   ) {
-    setConfirmDiscard(false);
-    setDraft((prev) =>
-      prev.map((c) =>
-        c.id !== componentId
-          ? c
-          : { ...c, lines: c.lines.map((l) => (l.key === lineKey ? updater(l) : l)) }
+    touchDraft((prev) =>
+      prev.map((s) =>
+        s.key !== slotKey
+          ? s
+          : { ...s, lines: s.lines.map((l) => (l.key === lineKey ? updater(l) : l)) }
       )
     );
   }
 
-  function setIngredient(componentId: string, lineKey: string, ingredientId: string) {
-    updateLine(componentId, lineKey, (l) => {
+  function setIngredient(slotKey: string, lineKey: string, ingredientId: string) {
+    updateLine(slotKey, lineKey, (l) => {
       const next = { ...l, ingredientId, grams: "", count: "", tsp: "" };
       const ing = ingById.get(ingredientId);
       if (!ing) return next;
-      // Keep any existing cost qty that matches the new unit if user re-picks.
       return withCostQty(next, ing.baseUnit, costQtyForUnit(l, ing.baseUnit));
     });
   }
 
-  function addLine(componentId: string) {
-    setConfirmDiscard(false);
-    setDraft((prev) =>
-      prev.map((c) => (c.id === componentId ? { ...c, lines: [...c.lines, emptyLine()] } : c))
+  function swapComponent(slotKey: string, componentId: string) {
+    const comp = libraryById.get(componentId);
+    touchDraft((prev) =>
+      prev.map((s) => {
+        if (s.key !== slotKey) return s;
+        if (!comp) return { ...s, componentId, lines: [] };
+        return {
+          ...s,
+          componentId,
+          lines: comp.lines.map(lineToDraft),
+        };
+      })
     );
   }
 
-  function removeLine(componentId: string, lineKey: string) {
-    setConfirmDiscard(false);
-    setDraft((prev) =>
-      prev.map((c) =>
-        c.id !== componentId ? c : { ...c, lines: c.lines.filter((l) => l.key !== lineKey) }
+  function addLine(slotKey: string) {
+    touchDraft((prev) =>
+      prev.map((s) => (s.key === slotKey ? { ...s, lines: [...s.lines, emptyLine()] } : s))
+    );
+  }
+
+  function removeLine(slotKey: string, lineKey: string) {
+    touchDraft((prev) =>
+      prev.map((s) =>
+        s.key !== slotKey ? s : { ...s, lines: s.lines.filter((l) => l.key !== lineKey) }
       )
     );
   }
 
-  function moveLine(componentId: string, lineKey: string, dir: -1 | 1) {
-    setConfirmDiscard(false);
-    setDraft((prev) =>
-      prev.map((c) => {
-        if (c.id !== componentId) return c;
-        const idx = c.lines.findIndex((l) => l.key === lineKey);
+  function moveLine(slotKey: string, lineKey: string, dir: -1 | 1) {
+    touchDraft((prev) =>
+      prev.map((s) => {
+        if (s.key !== slotKey) return s;
+        const idx = s.lines.findIndex((l) => l.key === lineKey);
         const nextIdx = idx + dir;
-        if (idx < 0 || nextIdx < 0 || nextIdx >= c.lines.length) return c;
-        const lines = c.lines.slice();
+        if (idx < 0 || nextIdx < 0 || nextIdx >= s.lines.length) return s;
+        const lines = s.lines.slice();
         const [row] = lines.splice(idx, 1);
         lines.splice(nextIdx, 0, row);
-        return { ...c, lines };
+        return { ...s, lines };
       })
     );
+  }
+
+  function moveSlot(slotKey: string, dir: -1 | 1) {
+    touchDraft((prev) => {
+      const idx = prev.findIndex((s) => s.key === slotKey);
+      const nextIdx = idx + dir;
+      if (idx < 0 || nextIdx < 0 || nextIdx >= prev.length) return prev;
+      const next = prev.slice();
+      const [row] = next.splice(idx, 1);
+      next.splice(nextIdx, 0, row);
+      return next;
+    });
+  }
+
+  function addComponentSlot() {
+    const unused = allComponents.find(
+      (c) => !draft.some((s) => s.componentId === c.id)
+    );
+    if (!unused) return;
+    touchDraft((prev) => [...prev, slotFromComponent(unused, 1)]);
+  }
+
+  function removeSlot(slotKey: string) {
+    touchDraft((prev) => prev.filter((s) => s.key !== slotKey));
   }
 
   async function save() {
@@ -475,14 +588,38 @@ export function ComponentLinesModal({
     setSaving(true);
     setSaveError(null);
     try {
-      for (const c of draft) {
-        const original = compById.get(c.id);
+      const seen = new Set<string>();
+      for (const slot of draft) {
+        if (seen.has(slot.componentId)) continue;
+        seen.add(slot.componentId);
+        const original = libraryById.get(slot.componentId);
         if (!original) continue;
+        if (linesEqual(original.lines, slot.lines)) continue;
         await repo.upsertComponent({
           ...original,
-          lines: draftToLines(c.lines),
+          lines: draftToLines(slot.lines),
         });
       }
+
+      if (editComposition && menuItem) {
+        const nextRefs = draft.map((s, i) => ({
+          componentId: s.componentId,
+          scale: Number(s.scale) || 1,
+          sort: i,
+        }));
+        const prevRefs = menuItem.components.map((c, i) => ({
+          componentId: c.componentId,
+          scale: c.scale,
+          sort: i,
+        }));
+        if (JSON.stringify(nextRefs) !== JSON.stringify(prevRefs)) {
+          await repo.upsertMenuItem({
+            ...menuItem,
+            components: nextRefs,
+          });
+        }
+      }
+
       await refresh();
       onClose();
     } catch (err) {
@@ -504,7 +641,7 @@ export function ComponentLinesModal({
         <div className="modal-header">
           <div>
             <p className="eyebrow" style={{ margin: 0 }}>
-              Edit ingredients
+              {editComposition ? "Edit recipe" : "Edit ingredients"}
             </p>
             <h2 id="edit-lines-title" style={{ margin: "4px 0 0" }}>
               {title}
@@ -522,7 +659,8 @@ export function ComponentLinesModal({
 
         {sharedNote && (
           <p className="note-inline" style={{ marginTop: 10 }}>
-            Shared components (frosting, filling, etc.) update every menu item that uses them.
+            Changing a shared component’s ingredients updates every menu item that uses it.
+            Swapping which component is linked only affects this menu item.
           </p>
         )}
 
@@ -533,26 +671,92 @@ export function ComponentLinesModal({
         )}
 
         <div className="edit-lines-scroller">
-          {draft.map((dc) => {
-            const meta = compById.get(dc.id);
+          {draft.map((slot, slotIdx) => {
+            const meta = libraryById.get(slot.componentId);
             return (
-              <section key={dc.id} className="edit-comp-section">
+              <section key={slot.key} className="edit-comp-section">
                 <div className="edit-comp-heading">
-                  <div>
-                    <p className="eyebrow" style={{ marginBottom: 2 }}>
-                      {meta?.category ?? "component"}
-                    </p>
-                    <h3 style={{ margin: 0, fontSize: "1.05rem" }}>{meta?.name ?? dc.id}</h3>
-                    {meta && (
-                      <p className="note-inline" style={{ margin: "4px 0 0" }}>
-                        1 batch → {meta.yieldAmount} {meta.yieldUnit}
+                  {editComposition ? (
+                    <div className="edit-comp-pick-row">
+                      <div className="edit-comp-pick">
+                        <p className="eyebrow" style={{ marginBottom: 4 }}>
+                          Component
+                        </p>
+                        <SearchPicker
+                          value={slot.componentId}
+                          items={allComponents}
+                          placeholder="Select component…"
+                          secondary={(c) => c.category}
+                          onChange={(id) => swapComponent(slot.key, id)}
+                        />
+                      </div>
+                      <label className="edit-line-cost edit-comp-scale">
+                        <span className="note-inline">Scale</span>
+                        <input
+                          type="number"
+                          min={0.01}
+                          step="any"
+                          value={slot.scale}
+                          onChange={(e) =>
+                            touchDraft((prev) =>
+                              prev.map((s) =>
+                                s.key === slot.key ? { ...s, scale: e.target.value } : s
+                              )
+                            )
+                          }
+                        />
+                      </label>
+                      <div className="edit-line-actions edit-comp-slot-actions">
+                        <button
+                          type="button"
+                          className="btn ghost sm"
+                          disabled={slotIdx === 0}
+                          onClick={() => moveSlot(slot.key, -1)}
+                          aria-label="Move component up"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          className="btn ghost sm"
+                          disabled={slotIdx === draft.length - 1}
+                          onClick={() => moveSlot(slot.key, 1)}
+                          aria-label="Move component down"
+                        >
+                          ↓
+                        </button>
+                        <button
+                          type="button"
+                          className="btn ghost sm"
+                          onClick={() => removeSlot(slot.key)}
+                          aria-label="Remove component"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="eyebrow" style={{ marginBottom: 2 }}>
+                        {meta?.category ?? "component"}
                       </p>
-                    )}
-                  </div>
+                      <h3 style={{ margin: 0, fontSize: "1.05rem" }}>
+                        {meta?.name ?? slot.componentId}
+                      </h3>
+                    </div>
+                  )}
+                  {meta && (
+                    <p className="note-inline" style={{ margin: "6px 0 0" }}>
+                      1 batch → {meta.yieldAmount} {meta.yieldUnit}
+                      {editComposition && Number(slot.scale) !== 1
+                        ? ` · used at ${slot.scale}×`
+                        : ""}
+                    </p>
+                  )}
                 </div>
 
                 <ul className="edit-lines-list">
-                  {dc.lines.map((line, idx) => {
+                  {slot.lines.map((line, idx) => {
                     const ing = ingById.get(line.ingredientId);
                     const baseUnit = ing?.baseUnit ?? "g";
                     const costQty = costQtyForUnit(line, baseUnit);
@@ -571,10 +775,12 @@ export function ComponentLinesModal({
                     return (
                       <li key={line.key} className="edit-line-row">
                         <div className="edit-line-main">
-                          <IngredientPicker
+                          <SearchPicker
                             value={line.ingredientId}
-                            ingredients={ingredients}
-                            onChange={(id) => setIngredient(dc.id, line.key, id)}
+                            items={ingredients}
+                            placeholder="Select ingredient…"
+                            secondary={(i) => i.baseUnit}
+                            onChange={(id) => setIngredient(slot.key, line.key, id)}
                           />
                           <input
                             type="text"
@@ -582,7 +788,7 @@ export function ComponentLinesModal({
                             placeholder="Kitchen label (e.g. 225 g)"
                             value={line.qtyText}
                             onChange={(e) =>
-                              updateLine(dc.id, line.key, (l) => ({
+                              updateLine(slot.key, line.key, (l) => ({
                                 ...l,
                                 qtyText: e.target.value,
                               }))
@@ -594,16 +800,14 @@ export function ComponentLinesModal({
                             placeholder="Detail (optional)"
                             value={line.detail}
                             onChange={(e) =>
-                              updateLine(dc.id, line.key, (l) => ({
+                              updateLine(slot.key, line.key, (l) => ({
                                 ...l,
                                 detail: e.target.value,
                               }))
                             }
                           />
                           <label className="edit-line-cost">
-                            <span className="note-inline">
-                              Cost qty ({baseUnit})
-                            </span>
+                            <span className="note-inline">Cost qty ({baseUnit})</span>
                             <input
                               type="number"
                               min={0}
@@ -611,7 +815,7 @@ export function ComponentLinesModal({
                               value={costQty}
                               disabled={!ing}
                               onChange={(e) =>
-                                updateLine(dc.id, line.key, (l) =>
+                                updateLine(slot.key, line.key, (l) =>
                                   withCostQty(l, baseUnit, e.target.value)
                                 )
                               }
@@ -623,7 +827,7 @@ export function ComponentLinesModal({
                             type="button"
                             className="btn ghost sm"
                             disabled={idx === 0}
-                            onClick={() => moveLine(dc.id, line.key, -1)}
+                            onClick={() => moveLine(slot.key, line.key, -1)}
                             aria-label="Move up"
                           >
                             ↑
@@ -631,8 +835,8 @@ export function ComponentLinesModal({
                           <button
                             type="button"
                             className="btn ghost sm"
-                            disabled={idx === dc.lines.length - 1}
-                            onClick={() => moveLine(dc.id, line.key, 1)}
+                            disabled={idx === slot.lines.length - 1}
+                            onClick={() => moveLine(slot.key, line.key, 1)}
                             aria-label="Move down"
                           >
                             ↓
@@ -640,7 +844,7 @@ export function ComponentLinesModal({
                           <button
                             type="button"
                             className="btn ghost sm"
-                            onClick={() => removeLine(dc.id, line.key)}
+                            onClick={() => removeLine(slot.key, line.key)}
                             aria-label="Remove line"
                           >
                             Remove
@@ -655,7 +859,7 @@ export function ComponentLinesModal({
                   })}
                 </ul>
 
-                {dc.lines.length === 0 && (
+                {slot.lines.length === 0 && (
                   <p className="muted" style={{ margin: "8px 0" }}>
                     No ingredient lines yet.
                   </p>
@@ -665,7 +869,7 @@ export function ComponentLinesModal({
                   <button
                     type="button"
                     className="btn ghost sm"
-                    onClick={() => addLine(dc.id)}
+                    onClick={() => addLine(slot.key)}
                   >
                     Add line
                   </button>
@@ -674,24 +878,23 @@ export function ComponentLinesModal({
                     className="btn ghost sm"
                     onClick={() => {
                       const line = emptyLine();
-                      setConfirmDiscard(false);
-                      setDraft((prev) =>
-                        prev.map((c) =>
-                          c.id === dc.id ? { ...c, lines: [...c.lines, line] } : c
+                      touchDraft((prev) =>
+                        prev.map((s) =>
+                          s.key === slot.key ? { ...s, lines: [...s.lines, line] } : s
                         )
                       );
-                      setNewIngFor({ componentId: dc.id, lineKey: line.key });
+                      setNewIngFor({ slotKey: slot.key, lineKey: line.key });
                     }}
                   >
                     New ingredient
                   </button>
                 </div>
 
-                {newIngFor?.componentId === dc.id && (
+                {newIngFor?.slotKey === slot.key && (
                   <NewIngredientForm
                     onCancel={() => setNewIngFor(null)}
                     onCreated={(ing) => {
-                      setIngredient(dc.id, newIngFor.lineKey, ing.id);
+                      setIngredient(slot.key, newIngFor.lineKey, ing.id);
                       setNewIngFor(null);
                     }}
                   />
@@ -701,10 +904,30 @@ export function ComponentLinesModal({
           })}
         </div>
 
+        {editComposition && (
+          <div className="edit-comp-toolbar" style={{ marginTop: 12 }}>
+            <button
+              type="button"
+              className="btn ghost sm"
+              onClick={addComponentSlot}
+              disabled={allComponents.every((c) =>
+                draft.some((s) => s.componentId === c.id)
+              )}
+            >
+              Add component
+            </button>
+          </div>
+        )}
+
+        {compositionError && <p className="modal-alert warn">{compositionError}</p>}
         {saveError && <p className="modal-alert warn">{saveError}</p>}
 
         {confirmDiscard ? (
-          <div className="modal-alert warn discard-alert" role="alertdialog" aria-labelledby="discard-title">
+          <div
+            className="modal-alert warn discard-alert"
+            role="alertdialog"
+            aria-labelledby="discard-title"
+          >
             <p id="discard-title" style={{ margin: "0 0 10px", fontWeight: 700 }}>
               Discard unsaved changes?
             </p>

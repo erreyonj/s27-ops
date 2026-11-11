@@ -606,6 +606,22 @@ tr:last-child td { border-bottom: none; }
 .edit-comp-heading {
   margin-bottom: 8px;
 }
+.edit-comp-pick-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+.edit-comp-pick {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.edit-comp-scale {
+  flex: 0 0 88px;
+}
+.edit-comp-slot-actions {
+  margin-top: 0;
+}
 .edit-lines-list {
   list-style: none;
   padding: 0;

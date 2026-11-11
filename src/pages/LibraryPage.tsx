@@ -177,6 +177,7 @@ export function LibraryPage() {
         title: c.name,
         components: [c] as ItemComponent[],
         sharedNote: false,
+        menuItem: null,
       };
     }
     const item = data!.menuItems.find((m) => m.id === editTarget.id);
@@ -189,6 +190,7 @@ export function LibraryPage() {
       title: item.name,
       components: comps,
       sharedNote: true,
+      menuItem: item,
     };
   }, [editTarget, compById, data]);
 
@@ -673,6 +675,7 @@ export function LibraryPage() {
           title={editModal.title}
           components={editModal.components}
           sharedNote={editModal.sharedNote}
+          menuItem={editModal.menuItem}
           onClose={() => setEditTarget(null)}
         />
       )}
