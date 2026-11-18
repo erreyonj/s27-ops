@@ -1576,6 +1576,25 @@ export const seedComponents: ItemComponent[] = [
       { ingredientId: "vegetable-oil", qtyText: "4 oz", detail: "113 g", grams: 113, count: null, tsp: null, sort: 10 },
     ],
   },
+  {
+    id: "comp-brown-sugar-cinnamon-pop-tart-bars",
+    name: "Brown Sugar Cinnamon Pop Tart Bars",
+    category: "dough",
+    yieldAmount: 12,
+    yieldUnit: "bars",
+    notes: "Recime · Brown Sugar Cinnamon Pop Tart Bars · 8-in square · filling + cinnamon glaze inline · 325°F 30–40 min",
+    lines: [
+      { ingredientId: "unsalted-butter", qtyText: "1 cup + 3 Tbsp", detail: "226 g softened dough + 42 g melted filling · ≈268 g", grams: 268, count: null, tsp: null, sort: 0 },
+      { ingredientId: "light-brown-sugar", qtyText: "1 1/2 cups", detail: "100 g dough + 200 g filling lightly packed · ≈300 g", grams: 300, count: null, tsp: null, sort: 1 },
+      { ingredientId: "powdered-sugar", qtyText: "1 3/4 cups", detail: "90 g dough + 120 g glaze · ≈210 g", grams: 210, count: null, tsp: null, sort: 2 },
+      { ingredientId: "mexican-vanilla-extract", qtyText: "2 1/2 tsp", detail: "2 tsp dough + 1/2 tsp glaze", grams: null, count: null, tsp: 2.5, sort: 3 },
+      { ingredientId: "kosher-salt", qtyText: "2 pinches", detail: "dough + glaze · ≈1/8 tsp", grams: null, count: null, tsp: 0.12, sort: 4 },
+      { ingredientId: "eggs", qtyText: "1 ea", detail: "large", grams: null, count: 1, tsp: null, sort: 5 },
+      { ingredientId: "all-purpose-flour", qtyText: "2 1/2 cups + 2 Tbsp", detail: "300 g dough + 16 g filling · ≈316 g", grams: 316, count: null, tsp: null, sort: 6 },
+      { ingredientId: "cinnamon", qtyText: "4 1/2 tsp", detail: "1 Tbsp filling + 1 1/2 tsp glaze", grams: null, count: null, tsp: 4.5, sort: 7 },
+      { ingredientId: "heavy-whipping-cream", qtyText: "3–4 Tbsp", detail: "glaze · ≈45–60 g", grams: 52, count: null, tsp: null, sort: 8 },
+    ],
+  },
 ];
 
 export const seedMenuItems: MenuItem[] = [
@@ -2487,6 +2506,25 @@ export const seedMenuItems: MenuItem[] = [
     components: [
       { componentId: "comp-brown-butter-cake", scale: 1, sort: 0 },
       { componentId: "comp-fluffy-vanilla-frosting", scale: 1, sort: 1 },
+    ],
+  },
+  {
+    id: "mi-brown-sugar-cinnamon-pop-tart-bars",
+    name: "Brown Sugar Cinnamon Pop Tart Bars",
+    brandName: "Brown Sugar Cinnamon Pop Tart Bars",
+    flavorTag: "brown-sugar-cinnamon-pop-tart-bars",
+    isPrimary: false,
+    isPlaceholder: false,
+    publishToSite: true,
+    assemblyNotes: null,
+    category: "dough",
+    yieldAmount: 12,
+    yieldUnit: "bars",
+    laborHours: null,
+    marginPct: null,
+    discountPct: null,
+    components: [
+      { componentId: "comp-brown-sugar-cinnamon-pop-tart-bars", scale: 1, sort: 0 },
     ],
   },
 ];
