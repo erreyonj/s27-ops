@@ -236,7 +236,7 @@ values (
   'topping',
   1,
   'batch',
-  'Recime · Powdered Sugar Glaze · component only · ingredients say water; instructions say milk · not linked (no iced lemon pound cake PDF)'
+  'Recime · Powdered Sugar Glaze · ingredients say water; instructions say milk · used on Iced Lemon Pound Cake'
 )
 on conflict (id) do update set
   name = excluded.name,
@@ -359,14 +359,45 @@ set brand_name = 'Chocolate Chip Banana Bread'
 where id = 'mi-of-banana-bread';
 
 -- ---------------------------------------------------------------------------
--- 10. Publish lineup (replace) — union of Wednesday + Saturday
--- Iced Lemon Pound Cake is omitted: no cake PDF, only the glaze above.
+-- 10. Iced Lemon Pound Cake (existing pound cake + glaze)
+-- ---------------------------------------------------------------------------
+insert into menu_items (
+  id, name, brand_name, flavor_tag, is_primary, is_placeholder, publish_to_site,
+  assembly_notes, category, yield_amount, yield_unit, labor_hours, margin_pct, discount_pct
+)
+values (
+  'mi-iced-lemon-pound-cake',
+  'Iced Lemon Pound Cake',
+  'Iced Lemon Pound Cake',
+  'iced-lemon-pound-cake',
+  false, false, true,
+  'Pound Cake + Powdered Sugar Glaze',
+  'cake', 16, 'slices', null, null, null
+)
+on conflict (id) do update set
+  name = excluded.name,
+  brand_name = excluded.brand_name,
+  flavor_tag = excluded.flavor_tag,
+  assembly_notes = excluded.assembly_notes,
+  category = excluded.category,
+  yield_amount = excluded.yield_amount,
+  yield_unit = excluded.yield_unit,
+  publish_to_site = excluded.publish_to_site;
+
+delete from menu_item_components where menu_item_id = 'mi-iced-lemon-pound-cake';
+insert into menu_item_components (menu_item_id, component_id, scale, sort) values
+  ('mi-iced-lemon-pound-cake', 'comp-pound-cake', 1, 0),
+  ('mi-iced-lemon-pound-cake', 'comp-powdered-sugar-glaze', 1, 1);
+
+-- ---------------------------------------------------------------------------
+-- 11. Publish lineup (replace) — union of Wednesday + Saturday
 -- ---------------------------------------------------------------------------
 update menu_items set publish_to_site = true
 where id in (
   'mi-pumpkin-brown-butter-cake',
   'mi-pumpkin-brownies',
   'mi-bb-rice-crispy-treats',
+  'mi-iced-lemon-pound-cake',
   'mi-bb-cc-cookies',
   'mi-apple-spice-cake-bb-bc',
   'mi-chocolate-brown-butter-cake',
@@ -380,6 +411,7 @@ where id not in (
   'mi-pumpkin-brown-butter-cake',
   'mi-pumpkin-brownies',
   'mi-bb-rice-crispy-treats',
+  'mi-iced-lemon-pound-cake',
   'mi-bb-cc-cookies',
   'mi-apple-spice-cake-bb-bc',
   'mi-chocolate-brown-butter-cake',

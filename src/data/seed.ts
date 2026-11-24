@@ -1689,7 +1689,7 @@ export const seedComponents: ItemComponent[] = [
     category: "topping",
     yieldAmount: 1,
     yieldUnit: "batch",
-    notes: "Recime · Powdered Sugar Glaze · component only · ingredients say water; instructions say milk · not linked (no iced lemon pound cake PDF)",
+    notes: "Recime · Powdered Sugar Glaze · ingredients say water; instructions say milk · used on Iced Lemon Pound Cake",
     lines: [
       { ingredientId: "powdered-sugar", qtyText: "2 cups", detail: "≈240 g", grams: 240, count: null, tsp: null, sort: 0 },
       { ingredientId: "mexican-vanilla-extract", qtyText: "1 tsp", detail: null, grams: null, count: null, tsp: 1, sort: 1 },
@@ -2400,6 +2400,26 @@ export const seedMenuItems: MenuItem[] = [
     discountPct: null,
     components: [
       { componentId: "comp-pound-cake", scale: 1, sort: 0 },
+    ],
+  },
+  {
+    id: "mi-iced-lemon-pound-cake",
+    name: "Iced Lemon Pound Cake",
+    brandName: "Iced Lemon Pound Cake",
+    flavorTag: "iced-lemon-pound-cake",
+    isPrimary: false,
+    isPlaceholder: false,
+    publishToSite: true,
+    assemblyNotes: "Pound Cake + Powdered Sugar Glaze",
+    category: "cake",
+    yieldAmount: 16,
+    yieldUnit: "slices",
+    laborHours: null,
+    marginPct: null,
+    discountPct: null,
+    components: [
+      { componentId: "comp-pound-cake", scale: 1, sort: 0 },
+      { componentId: "comp-powdered-sugar-glaze", scale: 1, sort: 1 },
     ],
   },
   {
