@@ -51,10 +51,12 @@ Farmers market cakes are not sold unfrosted.
 
 | Product | Default yield | Menu `category` | Packaging kit |
 |---------|---------------|-----------------|---------------|
-| Levain-style cookie | **6** cookies (ignore PDF "serves 12") | `dough` | bag |
-| Layer cake | **1** cake | `cake` | box |
-| Slice loaf | PDF **serves** count as slices | `dough` | bag per slice |
-| Treat / bar | PDF yield when clear | match product | bag for dough/bars |
+| Levain-style cookie | **6** cookies (ignore PDF "serves 12") | `dough` | cookie bag |
+| Layer cake | **1** cake | `cake` | cake box |
+| Slice loaf | PDF **serves** count as slices | `dough` | cookie bag |
+| Treat / bar | PDF yield when clear | match product | cookie bag |
+
+Only `cake` uses the cake-box kit. Every other category uses the cookie-bag kit.
 
 Frostings: always 1 batch. Named cakes / brand abbreviations: set `brandName` (customer-facing) separately from internal `name`.
 

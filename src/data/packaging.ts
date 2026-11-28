@@ -52,7 +52,7 @@ const BOX_KIT: Array<{ supplyId: string; sort: number }> = [
 ];
 
 function kitFor(category: Category): Array<{ supplyId: string; sort: number }> {
-  return category === "dough" ? COOKIE_KIT : BOX_KIT;
+  return category === "cake" ? BOX_KIT : COOKIE_KIT;
 }
 
 export const seedCategoryPackaging: CategoryPackagingLine[] = CATEGORIES.flatMap((category) =>

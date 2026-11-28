@@ -113,19 +113,13 @@ insert into packaging_supplies (id, name, pack_price, pack_qty, notes) values
   ('pkg-cake-box', 'Cake Box', 32.39, 100, '100 ct')
 on conflict (id) do nothing;
 
-insert into category_packaging_lines (category, supply_id, qty_per_unit, sort) values
-  ('dough', 'pkg-cookie-bag', 1, 0),
-  ('dough', 'pkg-brand-label-rounded', 1, 1),
-  ('dough', 'pkg-ingredient-label', 1, 2)
-on conflict (category, supply_id) do nothing;
-
 insert into category_packaging_lines (category, supply_id, qty_per_unit, sort)
 select c.cat, s.supply_id, 1, s.sort
 from (
   values
-    ('cake'::public.category),
     ('frosting'::public.category),
     ('pie'::public.category),
+    ('dough'::public.category),
     ('loaf'::public.category),
     ('filling'::public.category),
     ('topping'::public.category),
@@ -135,10 +129,16 @@ from (
 ) as c(cat)
 cross join (
   values
-    ('pkg-cake-box', 0),
-    ('pkg-brand-label-square', 1),
+    ('pkg-cookie-bag', 0),
+    ('pkg-brand-label-rounded', 1),
     ('pkg-ingredient-label', 2)
 ) as s(supply_id, sort)
+on conflict (category, supply_id) do nothing;
+
+insert into category_packaging_lines (category, supply_id, qty_per_unit, sort) values
+  ('cake', 'pkg-cake-box', 1, 0),
+  ('cake', 'pkg-brand-label-square', 1, 1),
+  ('cake', 'pkg-ingredient-label', 1, 2)
 on conflict (category, supply_id) do nothing;
 
 create table if not exists menu_item_components (
