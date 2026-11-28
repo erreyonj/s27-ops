@@ -67,6 +67,8 @@ create table if not exists menu_items (
   labor_hours numeric,
   margin_pct numeric,
   discount_pct numeric,
+  -- Slices per whole item when yield_amount = 1 and category is cake or pie (null = unset).
+  sub_yield numeric,
   -- Public farmers market page (brand names via get_public_market_menu).
   publish_to_site boolean not null default false,
   created_at timestamptz not null default now()

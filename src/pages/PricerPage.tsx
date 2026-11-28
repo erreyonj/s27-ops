@@ -5,6 +5,7 @@ import {
   defaultLaborHoursForItem,
   formatRetailForBatch,
   formatRetailPerUnit,
+  itemUsesSubYield,
   menuItemCost,
   quoteMenuItem,
   type QuoteDraft,
@@ -24,7 +25,34 @@ function draftFromItem(item: MenuItem): QuoteDraft {
     laborHours: item.laborHours ?? defaultLaborHoursForItem(item),
     marginPct: item.marginPct,
     discountPct: item.discountPct,
+    subYield: item.subYield ?? null,
   };
+}
+
+function SubYieldField({
+  value,
+  onChange,
+}: {
+  value: number | null;
+  onChange: (next: number | null) => void;
+}) {
+  return (
+    <label>
+      Sub yield (slices)
+      <input
+        type="number"
+        min={1}
+        step="1"
+        value={value ?? ""}
+        placeholder="not set"
+        onChange={(e) =>
+          onChange(
+            e.target.value === "" ? null : Math.max(1, Math.round(Number(e.target.value) || 1))
+          )
+        }
+      />
+    </label>
+  );
 }
 
 function PriceTagIcon() {
@@ -86,7 +114,7 @@ function CurrentMenuPriceCard({ item }: { item: MenuItem }) {
 
   useEffect(() => {
     setDraft(draftFromItem(item));
-  }, [item.id, item.laborHours, item.marginPct, item.discountPct]);
+  }, [item.id, item.laborHours, item.marginPct, item.discountPct, item.subYield]);
 
   const quote = useMemo(
     () =>
@@ -105,7 +133,8 @@ function CurrentMenuPriceCard({ item }: { item: MenuItem }) {
   const dirty =
     draft.laborHours !== item.laborHours ||
     draft.marginPct !== item.marginPct ||
-    draft.discountPct !== item.discountPct;
+    draft.discountPct !== item.discountPct ||
+    draft.subYield !== (item.subYield ?? null);
 
   async function commit() {
     setCommitting(true);
@@ -115,6 +144,7 @@ function CurrentMenuPriceCard({ item }: { item: MenuItem }) {
         laborHours: draft.laborHours,
         marginPct: draft.marginPct,
         discountPct: draft.discountPct,
+        subYield: draft.subYield,
       });
       await refresh();
     } finally {
@@ -148,7 +178,8 @@ function CurrentMenuPriceCard({ item }: { item: MenuItem }) {
         <strong>{money(quote.packaging)}</strong>
         <span className="muted">
           {" "}
-          · {quote.yieldAmount}× {item.category} kit
+          · {quote.perUnitCount}× {item.category} kit
+          {quote.subYieldApplied ? ` (one per ${quote.perUnitLabel})` : ""}
           {quote.packCostPerUnit > 0 ? ` (${money(quote.packCostPerUnit)}/unit)` : ""}
         </span>
       </p>
@@ -228,6 +259,12 @@ function CurrentMenuPriceCard({ item }: { item: MenuItem }) {
             }
           />
         </label>
+        {itemUsesSubYield(item) && (
+          <SubYieldField
+            value={draft.subYield}
+            onChange={(subYield) => setDraft({ ...draft, subYield })}
+          />
+        )}
       </div>
       <div className="pricer-chip-row">
         <button
@@ -346,8 +383,8 @@ function CurrentMenuPriceCard({ item }: { item: MenuItem }) {
               <strong>
                 {formatRetailPerUnit(
                   quote.suggestedRetail,
-                  quote.yieldAmount,
-                  quote.displayUnit
+                  quote.perUnitCount,
+                  quote.perUnitLabel
                 )}
               </strong>
             </td>
@@ -413,7 +450,13 @@ export function PricerPage() {
   useEffect(() => {
     if (selected) setDraft(draftFromItem(selected));
     else setDraft(null);
-  }, [selected?.id, selected?.laborHours, selected?.marginPct, selected?.discountPct]);
+  }, [
+    selected?.id,
+    selected?.laborHours,
+    selected?.marginPct,
+    selected?.discountPct,
+    selected?.subYield,
+  ]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -465,6 +508,7 @@ export function PricerPage() {
         laborHours: draft.laborHours,
         marginPct: draft.marginPct,
         discountPct: draft.discountPct,
+        subYield: draft.subYield,
       });
       await refresh();
     } finally {
@@ -500,7 +544,8 @@ export function PricerPage() {
     draft &&
     (draft.laborHours !== selected.laborHours ||
       draft.marginPct !== selected.marginPct ||
-      draft.discountPct !== selected.discountPct);
+      draft.discountPct !== selected.discountPct ||
+      draft.subYield !== (selected.subYield ?? null));
 
   return (
     <>
@@ -757,7 +802,8 @@ export function PricerPage() {
                 <strong>{money(quote.packaging)}</strong>
                 <span className="muted">
                   {" "}
-                  · {quote.yieldAmount}× {selected.category} kit
+                  · {quote.perUnitCount}× {selected.category} kit
+                  {quote.subYieldApplied ? ` (one per ${quote.perUnitLabel})` : ""}
                   {quote.packCostPerUnit > 0
                     ? ` (${money(quote.packCostPerUnit)}/unit)`
                     : ""}
@@ -848,6 +894,12 @@ export function PricerPage() {
                     }
                   />
                 </label>
+                {itemUsesSubYield(selected) && (
+                  <SubYieldField
+                    value={draft.subYield}
+                    onChange={(subYield) => setDraft({ ...draft, subYield })}
+                  />
+                )}
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
                 <button
@@ -957,8 +1009,8 @@ export function PricerPage() {
                       <strong>
                         {formatRetailPerUnit(
                           quote.suggestedRetail,
-                          quote.yieldAmount,
-                          quote.displayUnit
+                          quote.perUnitCount,
+                          quote.perUnitLabel
                         )}
                       </strong>
                     </td>

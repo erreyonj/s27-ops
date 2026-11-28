@@ -100,6 +100,11 @@ export interface MenuItem {
   marginPct: number | null;
   /** null = inherit bakery default; 0 = intentionally zeroed. */
   discountPct: number | null;
+  /**
+   * Slices per whole item. Used only when yieldAmount is 1 and category is cake or pie
+   * (per-slice retail and packaging). null/undefined = not set.
+   */
+  subYield?: number | null;
   components: MenuItemComponentRef[];
 }
 

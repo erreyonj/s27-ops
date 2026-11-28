@@ -185,6 +185,7 @@ export function ItemBuilderPage() {
         laborHours: null,
         marginPct: null,
         discountPct: null,
+        subYield: null,
         components: refs,
       });
 

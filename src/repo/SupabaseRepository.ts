@@ -64,6 +64,7 @@ function toMenuItem(m: any, itemComps: any[]): MenuItem {
     marginPct: m.margin_pct === null || m.margin_pct === undefined ? null : Number(m.margin_pct),
     discountPct:
       m.discount_pct === null || m.discount_pct === undefined ? null : Number(m.discount_pct),
+    subYield: m.sub_yield === null || m.sub_yield === undefined ? null : Number(m.sub_yield),
     components: itemComps
       .filter((mc: any) => mc.menu_item_id === m.id)
       .map((mc: any) => ({
@@ -252,6 +253,7 @@ export class SupabaseRepository implements Repository {
       labor_hours: item.laborHours,
       margin_pct: item.marginPct,
       discount_pct: item.discountPct,
+      sub_yield: item.subYield ?? null,
     });
     if (error) throw error;
     const del = await sb.from("menu_item_components").delete().eq("menu_item_id", item.id);

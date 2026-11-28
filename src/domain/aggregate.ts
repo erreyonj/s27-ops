@@ -220,6 +220,34 @@ export interface QuoteDraft {
   laborHours: number | null;
   marginPct: number | null;
   discountPct: number | null;
+  /** Slices per whole item (cake/pie, yield 1). null = not set. */
+  subYield: number | null;
+}
+
+/** Categories that can be sold by the slice when the item yields one whole. */
+const SUB_YIELD_CATEGORIES: ReadonlySet<string> = new Set(["cake", "pie"]);
+
+/** True when sub yield applies: yield amount is 1 and category is cake or pie. */
+export function itemUsesSubYield(item: MenuItem): boolean {
+  return item.yieldAmount === 1 && SUB_YIELD_CATEGORIES.has(item.category);
+}
+
+/**
+ * Units used for per-unit retail and packaging.
+ * Cake/pie with yield 1 and sub yield > 1 → slices; otherwise the item's own yield.
+ * Pass subYield to preview a draft value (undefined = use the saved item value).
+ */
+export function effectiveUnits(
+  item: MenuItem,
+  subYield?: number | null
+): { count: number; label: string; usesSubYield: boolean } {
+  const sub = subYield === undefined ? item.subYield ?? null : subYield;
+  if (itemUsesSubYield(item) && sub != null && sub > 1) {
+    return { count: sub, label: "slice", usesSubYield: true };
+  }
+  const count = item.yieldAmount > 0 ? item.yieldAmount : 1;
+  const label = (item.yieldUnit || "batch").trim() || "batch";
+  return { count, label, usesSubYield: false };
 }
 
 /** Category labor default when an item has no saved laborHours (cookies & bars → 0.7 h). */
@@ -245,13 +273,17 @@ export interface PackagingCost {
   kitMissing: boolean;
 }
 
-/** Category packaging kit × yieldAmount (every sellable unit gets a kit). */
+/**
+ * Category packaging kit × sellable units (yield amount, or slices when sub yield applies).
+ * Every sellable unit gets a kit.
+ */
 export function packagingCostForItem(
   item: MenuItem,
   supplies: PackagingSupply[],
-  categoryLines: CategoryPackagingLine[]
+  categoryLines: CategoryPackagingLine[],
+  subYield?: number | null
 ): PackagingCost {
-  const yieldAmt = item.yieldAmount > 0 ? item.yieldAmount : 1;
+  const yieldAmt = effectiveUnits(item, subYield).count;
   const supplyById = new Map(supplies.map((s) => [s.id, s]));
   const kit = categoryLines
     .filter((l) => l.category === item.category)
@@ -334,6 +366,11 @@ export interface MenuItemQuote {
   suggestedRetail: number;
   yieldAmount: number;
   displayUnit: string;
+  /** Units for per-unit retail and packaging (slices when sub yield applies). */
+  perUnitCount: number;
+  /** Label for per-unit retail, e.g. "cookies" or "slice". */
+  perUnitLabel: string;
+  subYieldApplied: boolean;
   warnings: string[];
 }
 
@@ -353,8 +390,15 @@ export function quoteMenuItem(
 ): MenuItemQuote {
   const mats = menuItemCost(item, compById, ingById);
   const yieldAmt = item.yieldAmount > 0 ? item.yieldAmount : 1;
+  const subYieldRaw = draft ? draft.subYield : item.subYield ?? null;
+  const perUnit = effectiveUnits(item, subYieldRaw);
   const materials = mats.batchCost;
-  const pack = packagingCostForItem(item, packagingSupplies, categoryPackaging);
+  const pack = packagingCostForItem(
+    item,
+    packagingSupplies,
+    categoryPackaging,
+    subYieldRaw
+  );
 
   const laborRaw = draft ? draft.laborHours : item.laborHours;
   const laborCategoryDefault = defaultLaborHoursForItem(item);
@@ -406,6 +450,9 @@ export function quoteMenuItem(
         pack.missingSupplies.length > 5 ? "…" : ""
       }`
     );
+  }
+  if (itemUsesSubYield(item) && !perUnit.usesSubYield) {
+    warnings.push("Sub yield not set — retail shown per whole item");
   }
   if (laborHoursMissing) {
     warnings.push("Labor hours not set — labor treated as $0");
@@ -496,6 +543,9 @@ export function quoteMenuItem(
     suggestedRetail,
     yieldAmount: yieldAmt,
     displayUnit,
+    perUnitCount: perUnit.count,
+    perUnitLabel: perUnit.label,
+    subYieldApplied: perUnit.usesSubYield,
     warnings,
   };
 }
@@ -520,7 +570,10 @@ export function singularYieldUnit(yieldUnit: string): string {
   return unit;
 }
 
-/** Per-unit retail from wholesale ÷ yield, e.g. "$5.68 per cookie". */
+/**
+ * Per-unit retail from wholesale ÷ units, e.g. "$5.68 per cookie".
+ * Pass quote.perUnitCount / quote.perUnitLabel (slices for sub-yield cakes and pies).
+ */
 export function formatRetailPerUnit(
   wholesale: number,
   yieldAmount: number,
