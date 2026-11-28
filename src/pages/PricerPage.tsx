@@ -112,6 +112,7 @@ function CurrentMenuPriceCard({ item }: { item: MenuItem }) {
     [data]
   );
 
+  console.log("item", item);
   useEffect(() => {
     setDraft(draftFromItem(item));
   }, [item.id, item.laborHours, item.marginPct, item.discountPct, item.subYield]);
